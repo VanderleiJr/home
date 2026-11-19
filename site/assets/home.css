@@ -33,9 +33,13 @@
     Geometria do chão em 3D. O JS lê estas mesmas variáveis para calcular
     a largura da estrada na tela — uma única fonte de verdade.
   */
-  --floor-depth: 500px;
+  /* Cresce com a altura da tela: mantém as proporções da cena em monitores altos. */
+  --floor-depth: max(500px, 60vh);
   --floor-tilt: 62deg;
   --road-w: max(16vw, 96px);
+  /* Velocidade da estrada: anda uma casa da grade (--grid) a cada --loop. */
+  --grid: 48px;
+  --loop: 1.6s;
 
   --font: Tahoma, "MS Sans Serif", Verdana, sans-serif;
   --mono: "Courier New", Courier, monospace;
@@ -145,22 +149,22 @@ a {
   background-image:
     linear-gradient(var(--pink) 2px, transparent 2px),
     linear-gradient(90deg, var(--pink) 2px, transparent 2px);
-  background-size: 48px 48px;
+  background-size: var(--grid) var(--grid);
   transform: rotateX(var(--floor-tilt));
   transform-origin: top center;
-  animation: floor-move 1.6s linear infinite;
+  animation: floor-move var(--loop) linear infinite;
 }
 
 @keyframes floor-move {
   to {
-    background-position: 0 48px;
+    background-position: 0 var(--grid);
   }
 }
 
 /*
   A estrada é filha do plano: herda a inclinação 3D sem precisar de
   transform próprio de perspectiva. A faixa central tracejada é um
-  gradiente repetido que anda na mesma velocidade da grade (48px a cada 1,6s).
+  gradiente repetido que anda na mesma velocidade da grade (--grid a cada --loop).
 */
 .road {
   position: absolute;
@@ -169,48 +173,63 @@ a {
   width: var(--road-w);
   transform: translateX(-50%);
   background:
-    linear-gradient(var(--yellow) 0 50%, transparent 0) 50% 0 / 4px 48px
+    linear-gradient(var(--yellow) 0 50%, transparent 0) 50% 0 / 4px var(--grid)
       repeat-y,
     #12001f;
   border-inline: 3px solid var(--cyan);
   box-shadow:
     0 0 14px var(--cyan),
     inset 0 0 14px rgb(1 205 254 / 0.5);
-  animation: road-move 1.6s linear infinite;
+  animation: road-move var(--loop) linear infinite;
 }
 
 @keyframes road-move {
   to {
-    background-position: 50% 48px;
+    background-position: 50% var(--grid);
   }
 }
 
 /*
-  O carro fica fora do plano 3D (sempre "de pé") e é posicionado por
-  duas variáveis que o JS atualiza: --car-x (deslocamento lateral) e
-  --car-tilt (inclinação nas curvas).
+  O SVG do carro cobre a cena inteira; o JS desenha os polígonos dentro
+  dele já projetados em perspectiva. Aqui só entram o brilho neon e a
+  trepidação do motor (dois "quadros" alternando 1px).
 */
 .car {
   position: absolute;
-  bottom: calc(var(--taskbar-h) + 6px);
-  left: 50%;
-  width: clamp(90px, 10vw, 140px);
-  transform: translateX(calc(-50% + var(--car-x, 0px)))
-    rotate(var(--car-tilt, 0deg));
-  filter: drop-shadow(0 0 5px var(--cyan));
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 4px var(--cyan));
+  animation: engine 0.24s steps(1) infinite;
 }
 
-.car svg {
-  display: block;
-  width: 100%;
-  /* Trepidação do motor: dois "quadros" alternando 1px. */
-  animation: engine 0.24s steps(1) infinite;
+.car polygon {
+  stroke-linejoin: round;
 }
 
 @keyframes engine {
   50% {
     transform: translateY(1px);
   }
+}
+
+/*
+  Rastro dos pneus: linhas sem preenchimento cujo contorno usa um
+  gradiente (definido no SVG pelo JS) que vai sumindo atrás do carro.
+*/
+.car-trail polyline {
+  fill: none;
+  stroke: url(#trail-fade);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.car-glass {
+  fill: rgb(1 205 254 / 0.25);
+  stroke: var(--cyan);
+  stroke-width: 1.5;
 }
 
 /* Estilo do SVG também é CSS: fill = preenchimento, stroke = contorno. */
@@ -367,6 +386,9 @@ a {
   color: #000;
   background: var(--face);
   border: 0;
+  border-radius: 0;
+  /* Desliga o visual nativo de botão (o Safari do iPhone aplica o dele). */
+  appearance: none;
   box-shadow: var(--bevel-out);
   cursor: pointer;
 }
@@ -376,12 +398,43 @@ a {
   box-shadow: var(--bevel-in);
 }
 
+/*
+  Ícones de minimizar e fechar desenhados com CSS, não com texto:
+  caracteres como "_" e "×" mudam de posição conforme a fonte de cada
+  aparelho. Pseudo-elementos (::before/::after) são caixas extras que o
+  CSS cria dentro do botão — aqui, barrinhas pretas posicionadas.
+*/
 .titlebar .btn {
+  position: relative;
+  width: 18px;
   height: 16px;
-  padding: 0 4px;
-  font-size: 11px;
-  line-height: 1;
-  font-weight: bold;
+  padding: 0;
+}
+
+.btn[data-action="minimize"]::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 2px;
+  background: #000;
+}
+
+.btn[data-action="close"]::before,
+.btn[data-action="close"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  background: #000;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.btn[data-action="close"]::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .window-body {
@@ -653,8 +706,32 @@ a {
 
 /* Media query: estas regras só valem quando a tela tem até 719px de largura. */
 @media (max-width: 719px) {
+  :root {
+    /* Estrada mais larga no celular, para manter a proporção com o carro. */
+    --road-w: 130px;
+  }
+
   body {
     overflow: auto;
+  }
+
+  /* Alvos de toque maiores: dedos são menos precisos que o mouse. */
+  .titlebar .btn {
+    width: 32px;
+    height: 26px;
+  }
+
+  .btn[data-action="minimize"]::before {
+    left: 10px;
+    bottom: 7px;
+    width: 12px;
+    height: 3px;
+  }
+
+  .btn[data-action="close"]::before,
+  .btn[data-action="close"]::after {
+    width: 14px;
+    height: 3px;
   }
 
   .desktop {

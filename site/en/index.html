@@ -34,21 +34,10 @@
         <div class="plane"><div class="road"></div></div>
       </div>
       <!--
-        Carro em SVG inline: um desenho vetorial escrito direto no HTML,
-        com formas simples (retângulos e caminhos) vistas de trás.
+        Carro 3D em wireframe: o SVG começa vazio e o JavaScript desenha
+        os polígonos a cada quadro, projetando um modelo 3D na tela.
       -->
-      <div class="car">
-        <svg viewBox="0 0 120 64">
-          <path class="car-body" d="M26 26 36 8h48l10 18z" />
-          <path class="car-line" d="M38 12h44l6 12H32z" />
-          <rect class="car-body" x="6" y="26" width="108" height="22" />
-          <rect class="car-light" x="10" y="30" width="100" height="7" />
-          <rect class="car-line" x="48" y="40" width="24" height="6" />
-          <path class="car-line" d="M2 22h116M18 22v4m84-4v4M6 48h108" />
-          <rect class="car-wheel" x="12" y="48" width="20" height="12" />
-          <rect class="car-wheel" x="88" y="48" width="20" height="12" />
-        </svg>
-      </div>
+      <svg class="car"></svg>
     </div>
 
     <main class="desktop">
@@ -99,17 +88,13 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimize"
-            >
-              _
-            </button>
+            ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Close"
-            >
-              ×
-            </button>
+            ></button>
           </div>
         </div>
         <div class="window-body">
@@ -126,7 +111,8 @@
           <div class="marquee">
             <span
               >★ Best viewed in any modern browser ★ No frameworks, just the web
-              ★ New projects coming soon ★ Use ← → to drive the car ★</span
+              ★ New projects coming soon ★ Use the arrow keys ← ↑ → ↓ to drive
+              the car ★</span
             >
           </div>
           <p class="construction"><span>🚧 UNDER CONSTRUCTION 🚧</span></p>
@@ -152,17 +138,13 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimize"
-            >
-              _
-            </button>
+            ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Close"
-            >
-              ×
-            </button>
+            ></button>
           </div>
         </div>
         <div class="window-body">
@@ -194,17 +176,13 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimize"
-            >
-              _
-            </button>
+            ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Close"
-            >
-              ×
-            </button>
+            ></button>
           </div>
         </div>
         <div class="window-body">

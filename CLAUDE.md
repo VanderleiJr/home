@@ -11,6 +11,7 @@ Personal home page linking small open-source learning projects built together. E
 - `site/` is the only folder published; everything at the repo root is tooling/docs.
 - Each project: `site/projects/<slug>/` (PT page + its CSS/JS) and `site/en/projects/<slug>/index.html` (EN page reusing the PT folder's CSS/JS). Link every new project from both home pages.
 - Home page: Win98/vaporwave "desktop" (windows, icons, taskbar) — CSS/JS shared by both languages in `site/assets/`. New projects go in the "projetos" window list (`.file-list`).
+- The home car is a 3D model in `home.js` projected with the floor's CSS geometry (`--floor-tilt`, `.floor` perspective): change the floor only through those, or the car drifts off the road.
 - `.github/workflows/pages.yml` lints, then deploys `site/` to GitHub Pages on push to `main`.
 - Served under `/home/` (repo isn't `<user>.github.io`): use relative URLs; root-absolute paths like `/css/style.css` break.
 - Run `npm run lint` after editing HTML. Prettier runs automatically via a PostToolUse hook.
