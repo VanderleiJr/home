@@ -1,0 +1,14 @@
+{
+  "name": "home",
+  "private": true,
+  "description": "Dev tooling only - the site itself has no build step.",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "html-validate site"
+  },
+  "devDependencies": {
+    "html-validate": "^11.21.1",
+    "prettier": "^3.10.1"
+  }
+}
