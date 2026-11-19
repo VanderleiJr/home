@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>kana.exe ✦ Vand Jr</title>
+    <meta
+      name="description"
+      content="Flashcard game to learn hiragana and katakana: a level journey with stars, a timed challenge and an endless mode. Plain HTML, CSS and JavaScript."
+    />
+    <link
+      rel="alternate"
+      hreflang="pt-BR"
+      href="https://vanderleijr.github.io/home/projects/kana/"
+    />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://vanderleijr.github.io/home/en/projects/kana/"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>"
+    />
+    <!-- Versão em inglês: reutiliza o CSS e o JS da página em português. -->
+    <link rel="stylesheet" href="../../../projects/kana/kana.css" />
+    <script src="../../../projects/kana/kana.js" defer></script>
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="floor"><div class="plane"></div></div>
+    </div>
+
+    <main class="desktop">
+      <section class="window win-game" aria-labelledby="game-title">
+        <div class="titlebar">
+          <h1 class="titlebar-text" id="game-title">🎴 kana.exe</h1>
+          <div class="titlebar-controls">
+            <a
+              class="btn btn-close"
+              href="../../"
+              aria-label="Close and go back to the home page"
+              title="Back to the home page"
+            ></a>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <form class="screen screen-menu">
+            <p class="intro">
+              Learn the Japanese alphabets: see the kana and say how it reads.
+            </p>
+
+            <fieldset>
+              <legend>Answer</legend>
+              <label
+                ><input type="radio" name="answer" value="choice" checked />
+                Multiple choice</label
+              >
+              <label
+                ><input type="radio" name="answer" value="type" /> Type
+                it</label
+              >
+            </fieldset>
+
+            <button
+              type="submit"
+              class="btn mode mode-journey"
+              value="journey"
+              formnovalidate
+            >
+              🗺 Journey <small class="journey-next"></small>
+            </button>
+
+            <fieldset class="free">
+              <legend>Free play</legend>
+              <fieldset>
+                <legend>Alphabet</legend>
+                <label
+                  ><input type="radio" name="script" value="hiragana" checked />
+                  Hiragana <span lang="ja">あ</span></label
+                >
+                <label
+                  ><input type="radio" name="script" value="katakana" />
+                  Katakana <span lang="ja">ア</span></label
+                >
+                <label
+                  ><input type="radio" name="script" value="both" /> Both</label
+                >
+              </fieldset>
+
+              <fieldset>
+                <legend>Groups</legend>
+                <label
+                  ><input type="checkbox" name="groups" value="base" checked />
+                  Basic <span lang="ja">かな</span></label
+                >
+                <label
+                  ><input type="checkbox" name="groups" value="dakuten" />
+                  Dakuten <span lang="ja">が ぱ</span></label
+                >
+                <label
+                  ><input type="checkbox" name="groups" value="yoon" /> Combined
+                  <span lang="ja">きゃ</span></label
+                >
+              </fieldset>
+
+              <div class="modes">
+                <button type="submit" class="btn mode" value="timed">
+                  ⏱ Time attack <small>60 s · a miss costs 3 s</small>
+                </button>
+                <button type="submit" class="btn mode" value="endless">
+                  ∞ Endless <small>no clock, at your pace</small>
+                </button>
+              </div>
+
+              <p class="field records">
+                🏆 Records for these settings:
+                <b data-best="timed">0</b> points · streak of
+                <b data-best="streak">0</b>
+              </p>
+            </fieldset>
+          </form>
+
+          <section class="screen screen-game" aria-label="Game" hidden>
+            <p class="game-level" hidden></p>
+            <div class="hud">
+              <p class="field">Score <output class="score">0</output></p>
+              <p class="field">Combo <output class="combo">×1</output></p>
+              <p class="field">
+                <span class="hud-mode-label">Time</span>
+                <output class="hud-mode">60</output>
+              </p>
+            </div>
+            <div class="timebar" aria-hidden="true">
+              <div class="timebar-fill"></div>
+            </div>
+
+            <div class="card">
+              <div class="card-inner">
+                <p class="card-face card-front" lang="ja">あ</p>
+                <p class="card-face card-back" aria-hidden="true">a</p>
+              </div>
+            </div>
+            <p class="feedback" role="status"></p>
+
+            <div class="choices"></div>
+            <form class="typing" hidden>
+              <label for="typing-input">How does it read?</label>
+              <input
+                id="typing-input"
+                class="field"
+                type="text"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                placeholder="romaji…"
+              />
+              <button type="submit" class="btn">OK</button>
+            </form>
+
+            <p class="game-actions">
+              <button type="button" class="btn" data-action="quit">
+                Quit <kbd>Esc</kbd>
+              </button>
+            </p>
+          </section>
+
+          <section class="screen screen-end" aria-labelledby="end-title" hidden>
+            <h2 class="end-title" id="end-title">Game over!</h2>
+            <p class="end-stars" role="img" hidden></p>
+            <p class="end-note" data-record="★ NEW RECORD ★" hidden></p>
+            <dl class="field results">
+              <dt>Score</dt>
+              <dd data-result="score">0</dd>
+              <dt>Correct</dt>
+              <dd data-result="hits">0</dd>
+              <dt>Accuracy</dt>
+              <dd data-result="accuracy">—</dd>
+              <dt>Best streak</dt>
+              <dd data-result="streak">0</dd>
+            </dl>
+            <p>To review: <span class="missed" lang="ja"></span></p>
+            <p class="end-actions">
+              <button type="button" class="btn" data-action="next-level" hidden>
+                Next level ▶
+              </button>
+              <button type="button" class="btn" data-action="again">
+                ↻ Play again
+              </button>
+              <button type="button" class="btn" data-action="menu">
+                ☰ Menu
+              </button>
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="window win-journey" aria-labelledby="journey-title">
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="journey-title">🗺 journey.txt</h2>
+        </div>
+        <div class="window-body">
+          <p>
+            Each level needs <b>70%</b> correct answers (★) to unlock the next
+            one. ★★ = 90% · ★★★ = no mistakes. This progress is saved and never
+            lost.
+          </p>
+          <div class="field level-map"></div>
+          <p class="statusbar journey-summary"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="taskbar">
+      <a class="btn start-button" href="../../">🌴 Home</a>
+      <span class="taskbar-hint">Progress saved in this browser</span>
+      <div class="tray">
+        <a
+          href="../../../projects/kana/"
+          hreflang="pt-BR"
+          lang="pt-BR"
+          title="Versão em português"
+          >PT</a
+        >
+      </div>
+    </footer>
+  </body>
+</html>

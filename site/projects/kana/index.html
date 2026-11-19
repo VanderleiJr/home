@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>kana.exe ✦ Vand Jr</title>
+    <meta
+      name="description"
+      content="Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo e modo infinito. HTML, CSS e JavaScript puro."
+    />
+    <link
+      rel="alternate"
+      hreflang="pt-BR"
+      href="https://vanderleijr.github.io/home/projects/kana/"
+    />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://vanderleijr.github.io/home/en/projects/kana/"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>"
+    />
+    <link rel="stylesheet" href="kana.css" />
+    <script src="kana.js" defer></script>
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="floor"><div class="plane"></div></div>
+    </div>
+
+    <main class="desktop">
+      <section class="window win-game" aria-labelledby="game-title">
+        <div class="titlebar">
+          <h1 class="titlebar-text" id="game-title">🎴 kana.exe</h1>
+          <div class="titlebar-controls">
+            <!-- O "fechar" é um link: sai do jogo e volta para a página inicial. -->
+            <a
+              class="btn btn-close"
+              href="../../"
+              aria-label="Fechar e voltar à página inicial"
+              title="Voltar à página inicial"
+            ></a>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <!--
+            Tela 1: o menu é um <form>. FormData lê todas as escolhas de uma
+            vez, e o Enter já envia o formulário sem nenhum código extra.
+          -->
+          <form class="screen screen-menu">
+            <p class="intro">
+              Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê.
+            </p>
+
+            <!-- fieldset + legend: a "caixa de grupo" clássica do Windows 98. -->
+            <fieldset>
+              <legend>Resposta</legend>
+              <label
+                ><input type="radio" name="answer" value="choice" checked />
+                Múltipla escolha</label
+              >
+              <label
+                ><input type="radio" name="answer" value="type" />
+                Digitar</label
+              >
+            </fieldset>
+
+            <!-- formnovalidate: a jornada ignora a validação dos grupos do modo livre. -->
+            <button
+              type="submit"
+              class="btn mode mode-journey"
+              value="journey"
+              formnovalidate
+            >
+              🗺 Jornada <small class="journey-next"></small>
+            </button>
+
+            <fieldset class="free">
+              <legend>Modo livre</legend>
+              <fieldset>
+                <legend>Alfabeto</legend>
+                <label
+                  ><input type="radio" name="script" value="hiragana" checked />
+                  Hiragana <span lang="ja">あ</span></label
+                >
+                <label
+                  ><input type="radio" name="script" value="katakana" />
+                  Katakana <span lang="ja">ア</span></label
+                >
+                <label
+                  ><input type="radio" name="script" value="both" /> Os
+                  dois</label
+                >
+              </fieldset>
+
+              <fieldset>
+                <legend>Grupos</legend>
+                <label
+                  ><input type="checkbox" name="groups" value="base" checked />
+                  Básicos <span lang="ja">かな</span></label
+                >
+                <label
+                  ><input type="checkbox" name="groups" value="dakuten" />
+                  Dakuten <span lang="ja">が ぱ</span></label
+                >
+                <label
+                  ><input type="checkbox" name="groups" value="yoon" />
+                  Combinados <span lang="ja">きゃ</span></label
+                >
+              </fieldset>
+
+              <div class="modes">
+                <button type="submit" class="btn mode" value="timed">
+                  ⏱ Contra o tempo <small>60 s · errar custa 3 s</small>
+                </button>
+                <button type="submit" class="btn mode" value="endless">
+                  ∞ Infinito <small>sem relógio, no seu ritmo</small>
+                </button>
+              </div>
+
+              <p class="field records">
+                🏆 Recordes nesta configuração:
+                <b data-best="timed">0</b> pontos · sequência de
+                <b data-best="streak">0</b>
+              </p>
+            </fieldset>
+          </form>
+
+          <!-- Tela 2: o jogo. -->
+          <section class="screen screen-game" aria-label="Jogo" hidden>
+            <p class="game-level" hidden></p>
+            <div class="hud">
+              <p class="field">Pontos <output class="score">0</output></p>
+              <p class="field">Combo <output class="combo">×1</output></p>
+              <p class="field">
+                <span class="hud-mode-label">Tempo</span>
+                <output class="hud-mode">60</output>
+              </p>
+            </div>
+            <div class="timebar" aria-hidden="true">
+              <div class="timebar-fill"></div>
+            </div>
+
+            <!-- A carta tem duas faces; o CSS gira a caixa em 3D para virar. -->
+            <div class="card">
+              <div class="card-inner">
+                <p class="card-face card-front" lang="ja">あ</p>
+                <p class="card-face card-back" aria-hidden="true">a</p>
+              </div>
+            </div>
+            <!-- role="status": leitores de tela anunciam o acerto ou o erro. -->
+            <p class="feedback" role="status"></p>
+
+            <div class="choices"></div>
+            <form class="typing" hidden>
+              <label for="typing-input">Como se lê?</label>
+              <input
+                id="typing-input"
+                class="field"
+                type="text"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                placeholder="romaji…"
+              />
+              <button type="submit" class="btn">OK</button>
+            </form>
+
+            <p class="game-actions">
+              <button type="button" class="btn" data-action="quit">
+                Encerrar <kbd>Esc</kbd>
+              </button>
+            </p>
+          </section>
+
+          <!-- Tela 3: resultado. -->
+          <section class="screen screen-end" aria-labelledby="end-title" hidden>
+            <h2 class="end-title" id="end-title">Fim de jogo!</h2>
+            <p class="end-stars" role="img" hidden></p>
+            <p class="end-note" data-record="★ NOVO RECORDE ★" hidden></p>
+            <dl class="field results">
+              <dt>Pontos</dt>
+              <dd data-result="score">0</dd>
+              <dt>Acertos</dt>
+              <dd data-result="hits">0</dd>
+              <dt>Precisão</dt>
+              <dd data-result="accuracy">—</dd>
+              <dt>Maior sequência</dt>
+              <dd data-result="streak">0</dd>
+            </dl>
+            <p>Para revisar: <span class="missed" lang="ja"></span></p>
+            <p class="end-actions">
+              <button type="button" class="btn" data-action="next-level" hidden>
+                Próximo nível ▶
+              </button>
+              <button type="button" class="btn" data-action="again">
+                ↻ Jogar de novo
+              </button>
+              <button type="button" class="btn" data-action="menu">
+                ☰ Menu
+              </button>
+            </p>
+          </section>
+        </div>
+      </section>
+
+      <section class="window win-journey" aria-labelledby="journey-title">
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="journey-title">🗺 jornada.txt</h2>
+        </div>
+        <div class="window-body">
+          <p>
+            Cada nível pede <b>70%</b> de acertos (★) para liberar o próximo. ★★
+            = 90% · ★★★ = sem erros. Este progresso fica salvo e não se perde.
+          </p>
+          <!-- Preenchido pelo JS a partir dos mesmos dados do jogo. -->
+          <div class="field level-map"></div>
+          <p class="statusbar journey-summary"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="taskbar">
+      <a class="btn start-button" href="../../">🌴 Início</a>
+      <span class="taskbar-hint">Progresso salvo neste navegador</span>
+      <div class="tray">
+        <a
+          href="../../en/projects/kana/"
+          hreflang="en"
+          lang="en"
+          title="English version"
+          >EN</a
+        >
+      </div>
+    </footer>
+  </body>
+</html>

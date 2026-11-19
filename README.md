@@ -8,6 +8,10 @@ Minha página inicial e vitrine de pequenos projetos de aprendizado, feitos só 
 
 O código é aberto e foi escrito para ser lido: cada projeto traz comentários explicando o _porquê_ das técnicas usadas. Abra a pasta do projeto em [`site/projects/`](site/projects/) ou use "Exibir código-fonte" no navegador.
 
+## Projetos
+
+- [🎴 kana.exe](https://vanderleijr.github.io/home/projects/kana/): flashcards de hiragana e katakana: jornada por níveis com estrelas (salva no `localStorage`), desafio contra o tempo e modo infinito ([código](site/projects/kana/)).
+
 ## Estrutura
 
 ```
