@@ -2,15 +2,11 @@
   Estilo do kana.exe: a mesma estética da página inicial (janelas do
   Windows 98 sobre um cenário vaporwave), mas em um arquivo próprio —
   cada projeto se sustenta sozinho e pode ser estudado isoladamente.
+  Só o cenário de fundo (céu, sol, chão) vem do assets/scene.css, o mesmo
+  da página inicial: assim a troca entre as páginas é imperceptível.
 */
 
 :root {
-  --pink: #ff71ce;
-  --cyan: #01cdfe;
-  --mint: #05ffa1;
-  --purple: #b967ff;
-  --yellow: #fffb96;
-  --night: #1a0033;
   --face: #c0c0c0;
   --taskbar-h: 36px;
 
@@ -58,67 +54,6 @@ a {
   font-family: var(--font-ja);
 }
 
-/* ---------- Cenário (versão simplificada da página inicial) ---------- */
-
-.scene {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  background: linear-gradient(var(--night), #3d0066 45%, var(--pink));
-}
-
-.sun {
-  position: absolute;
-  left: 50%;
-  bottom: 38vh;
-  width: min(40vmin, 300px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  transform: translate(-50%, 30%);
-  background: linear-gradient(var(--yellow), var(--pink) 75%);
-  box-shadow: 0 0 60px var(--pink);
-  mask: linear-gradient(
-    #000 0 50%,
-    transparent 50% 55%,
-    #000 55% 65%,
-    transparent 65% 71%,
-    #000 71% 80%,
-    transparent 80% 87%,
-    #000 87%
-  );
-}
-
-/* Chão quadriculado em 3D: perspective no pai + rotateX no filho. */
-.floor {
-  position: absolute;
-  inset: auto 0 0;
-  height: 38vh;
-  perspective: 500px;
-  perspective-origin: 50% 0;
-  overflow: hidden;
-  background: linear-gradient(#2b0045, #0d001a);
-  border-top: 2px solid var(--pink);
-}
-
-.plane {
-  position: absolute;
-  inset: 0 -100%;
-  background-image:
-    linear-gradient(var(--pink) 2px, transparent 2px),
-    linear-gradient(90deg, var(--pink) 2px, transparent 2px);
-  background-size: 48px 48px;
-  transform: rotateX(62deg);
-  transform-origin: top center;
-  animation: floor-move 1.6s linear infinite;
-}
-
-@keyframes floor-move {
-  to {
-    background-position: 0 48px;
-  }
-}
-
 /* ---------- Janelas ---------- */
 
 /*
@@ -132,6 +67,23 @@ a {
   justify-content: center;
   gap: 24px;
   padding: 24px 12px calc(var(--taskbar-h) + 24px);
+}
+
+/*
+  Em telas largas, quem rola é a área das janelas, não a página: a
+  barra de rolagem da página estreitaria a tela e deslocaria o cenário
+  em relação à página inicial (que não rola).
+*/
+@media (min-width: 720px) {
+  body {
+    overflow: hidden;
+  }
+
+  .desktop {
+    height: calc(100dvh - var(--taskbar-h));
+    padding-bottom: 24px;
+    overflow-y: auto;
+  }
 }
 
 .window {

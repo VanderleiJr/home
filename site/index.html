@@ -23,6 +23,10 @@
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>"
     />
+    <!-- Cenário compartilhado com todas as páginas: carregado antes do CSS próprio. -->
+    <link rel="stylesheet" href="assets/scene.css" />
+    <!-- Sem defer: precisa rodar antes da primeira pintura (veja o arquivo). -->
+    <script src="assets/scene.js"></script>
     <link rel="stylesheet" href="assets/home.css" />
     <!-- defer: baixa o script em paralelo, mas só executa depois de ler o HTML. -->
     <script src="assets/home.js" defer></script>

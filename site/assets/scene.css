@@ -1,0 +1,128 @@
+/*
+  Cenário compartilhado (céu, sol e chão quadriculado) entre a página
+  inicial e todos os projetos. Um único arquivo garante que o fundo seja
+  idêntico em todas as páginas: ao navegar, nada "pula" de lugar.
+  Carregue antes do CSS da página, junto com scene.js.
+*/
+
+:root {
+  --pink: #ff71ce;
+  --cyan: #01cdfe;
+  --mint: #05ffa1;
+  --purple: #b967ff;
+  --yellow: #fffb96;
+  --night: #1a0033;
+
+  /*
+    Geometria do chão em 3D. O JS lê estas mesmas variáveis para calcular
+    a largura da estrada na tela — uma única fonte de verdade.
+  */
+  /* Cresce com a altura da tela: mantém as proporções da cena em monitores altos. */
+  --floor-depth: max(500px, 60vh);
+  --floor-tilt: 62deg;
+  /* Velocidade da estrada: anda uma casa da grade (--grid) a cada --loop. */
+  --grid: 48px;
+  --loop: 1.6s;
+}
+
+/*
+  View Transitions entre documentos: com isto nas duas páginas, o
+  navegador troca de uma para a outra com um "fade" suave em vez de
+  piscar em branco. Como o cenário é idêntico (e sincronizado pelo
+  scene.js), só as janelas parecem mudar. Navegadores sem suporte simplesmente ignoram.
+*/
+@view-transition {
+  navigation: auto;
+}
+
+/* ---------- Cenário: céu, sol e chão quadriculado ---------- */
+
+/* position: fixed + inset: 0 = ocupa a tela toda e não rola junto com o conteúdo. */
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(1px 1px at 20% 15%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 85% 25%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 40% 30%, #fff 50%, transparent 51%),
+    linear-gradient(var(--night), #3d0066 45%, #ff71ce 100%);
+}
+
+/*
+  O sol listrado: um círculo com degradê, "recortado" por uma máscara.
+  A máscara (mask) usa um gradiente repetido: onde é transparente,
+  o sol some — isso cria as faixas horizontais na metade de baixo.
+*/
+.sun {
+  position: absolute;
+  left: 50%;
+  bottom: 42vh;
+  width: min(44vmin, 340px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, 30%);
+  background: linear-gradient(var(--yellow), var(--pink) 75%);
+  box-shadow: 0 0 60px var(--pink);
+  mask: linear-gradient(
+    #000 0 50%,
+    transparent 50% 54%,
+    #000 54% 62%,
+    transparent 62% 67%,
+    #000 67% 74%,
+    transparent 74% 80%,
+    #000 80% 86%,
+    transparent 86% 93%,
+    #000 93%
+  );
+}
+
+/*
+  O chão: uma grade desenhada com dois gradientes lineares (linhas
+  horizontais + verticais) e "deitada" com perspective + rotateX.
+  A animação move o fundo e dá a sensação de viajar para frente.
+*/
+.floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42vh;
+  perspective: var(--floor-depth);
+  /* Ponto de fuga no horizonte (topo do chão), onde as linhas se encontram. */
+  perspective-origin: 50% 0;
+  overflow: hidden;
+  background: linear-gradient(#2b0045, #0d001a);
+  border-top: 2px solid var(--pink);
+  box-shadow: 0 -4px 24px var(--pink);
+}
+
+.plane {
+  position: absolute;
+  /*
+    Cuidado: girando a partir do topo, a borda de baixo "vem" na direção
+    de quem olha. Se ela passar da distância do perspective, o navegador
+    descarta o elemento inteiro — por isso a altura é a mesma do chão.
+  */
+  inset: 0 -100%;
+  background-image:
+    linear-gradient(var(--pink) 2px, transparent 2px),
+    linear-gradient(90deg, var(--pink) 2px, transparent 2px);
+  background-size: var(--grid) var(--grid);
+  transform: rotateX(var(--floor-tilt));
+  transform-origin: top center;
+  animation: floor-move var(--loop) linear infinite;
+  animation-delay: var(--phase, 0s);
+}
+
+@keyframes floor-move {
+  to {
+    background-position: 0 var(--grid);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plane {
+    animation: none;
+  }
+}
