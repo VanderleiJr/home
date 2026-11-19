@@ -11,68 +11,13 @@
     (sistema de Leitner) só durante a partida — cada jogo recomeça do zero.
 */
 
-// ---------- Textos nos dois idiomas ----------
+// ---------- Textos ----------
 
-// O mesmo JS atende as duas páginas: o idioma vem do <html lang>.
-const TEXT = {
-  pt: {
-    hit: "✔ Certo!",
-    miss: "✘ Era",
-    timeUp: "⏱ Tempo esgotado!",
-    gameOver: "Fim de jogo!",
-    time: "Tempo",
-    streak: "Sequência",
-    question: "Questão",
-    noneMissed: "nenhum — perfeito!",
-    needGroup: "Escolha pelo menos um grupo.",
-    level: "Nível",
-    review: "Revisão",
-    locked: "bloqueado",
-    starsOf: "estrelas de 3",
-    levelDone: "Nível concluído!",
-    levelFail: "Quase! Acerte 70% para passar.",
-    unlocked: "🔓 Próximo nível liberado!",
-    journeyDone: "🎌 Jornada completa! おめでとう!",
-    stars: "Estrelas",
-    of: "de",
-    levelsPassed: "Níveis concluídos",
-    scripts: { hiragana: "Hiragana", katakana: "Katakana" },
-    groups: {
-      base: "Básicos",
-      dakuten: "Dakuten ゛ e handakuten ゜",
-      yoon: "Combinados (yōon)",
-    },
-  },
-  en: {
-    hit: "✔ Correct!",
-    miss: "✘ It was",
-    timeUp: "⏱ Time's up!",
-    gameOver: "Game over!",
-    time: "Time",
-    streak: "Streak",
-    question: "Question",
-    noneMissed: "none — perfect!",
-    needGroup: "Pick at least one group.",
-    level: "Level",
-    review: "Review",
-    locked: "locked",
-    starsOf: "stars out of 3",
-    levelDone: "Level complete!",
-    levelFail: "Almost! Get 70% right to pass.",
-    unlocked: "🔓 Next level unlocked!",
-    journeyDone: "🎌 Journey complete! おめでとう!",
-    stars: "Stars",
-    of: "of",
-    levelsPassed: "Levels passed",
-    scripts: { hiragana: "Hiragana", katakana: "Katakana" },
-    groups: {
-      base: "Basic",
-      dakuten: "Dakuten ゛ and handakuten ゜",
-      yoon: "Combined (yōon)",
-    },
-  },
-};
-const t = document.documentElement.lang.startsWith("pt") ? TEXT.pt : TEXT.en;
+/*
+  Os textos vêm de site/i18n/<idioma>.json, carregados pelo assets/i18n.js.
+  Este atalho só acrescenta o prefixo "kana.": t("hit") lê "kana.hit".
+*/
+const t = (key, vars) => i18n.t(`kana.${key}`, vars);
 
 // ---------- Dados: a tabela de kana ----------
 
@@ -239,7 +184,7 @@ function currentLevel() {
 // Nome curto do nível: os próprios kana, ou "Revisão: Básicos".
 const levelName = (level) =>
   level.review
-    ? `${t.review}: ${t.groups[level.group]}`
+    ? `${t("review")}: ${t(`groups.${level.group}`)}`
     : level.cards.map((c) => c.kana).join(" ");
 
 // ---------- Elementos da página ----------
@@ -294,7 +239,7 @@ function showRecords() {
 menu.addEventListener("change", () => {
   // Validação nativa: setCustomValidity marca o campo como inválido.
   groupBoxes[0].setCustomValidity(
-    menu.querySelector('[name="groups"]:checked') ? "" : t.needGroup,
+    menu.querySelector('[name="groups"]:checked') ? "" : t("needGroup"),
   );
   showRecords();
 });
@@ -358,15 +303,15 @@ function start(mode, levelIndex = null) {
   choices.hidden = settings.answer !== "choice";
   typing.hidden = settings.answer !== "type";
   $(".hud-mode-label").textContent = {
-    timed: t.time,
-    endless: t.streak,
-    journey: t.question,
+    timed: t("time"),
+    endless: t("streak"),
+    journey: t("question"),
   }[mode];
   $(".timebar").hidden = mode !== "timed";
   $(".game-level").hidden = mode !== "journey";
   if (mode === "journey") {
     $(".game-level").textContent =
-      `${t.level} ${levelIndex + 1} · ${levelName(LEVELS[levelIndex])}`;
+      `${t("level")} ${levelIndex + 1} · ${levelName(LEVELS[levelIndex])}`;
   }
   feedback.textContent = "";
   card.classList.remove("is-flipped", "is-hit", "is-miss");
@@ -515,8 +460,8 @@ function answer(given) {
   back.textContent = current.romaji;
   card.classList.add("is-flipped", hit ? "is-hit" : "is-miss");
   feedback.textContent = hit
-    ? `${t.hit} +${10 * combo()}`
-    : `${t.miss} “${current.romaji}”`;
+    ? `${t("hit")} +${10 * combo()}`
+    : `${t("miss")} “${current.romaji}”`;
 
   for (const button of choices.children) {
     if (button.dataset.romaji === current.romaji)
@@ -552,7 +497,7 @@ function tick(now) {
   const left = Math.max(0, session.endsAt - now);
   $(".hud-mode").textContent = Math.ceil(left / 1000);
   $(".timebar-fill").style.transform = `scaleX(${left / TIMED_MS})`;
-  if (left === 0) finish(t.timeUp);
+  if (left === 0) finish(t("timeUp"));
   else requestAnimationFrame(tick);
 }
 
@@ -575,7 +520,7 @@ function quit() {
   }
 }
 
-function finish(title = t.gameOver) {
+function finish(title = t("gameOver")) {
   if (!session || session.over) return;
   session.over = true;
 
@@ -590,12 +535,12 @@ function finish(title = t.gameOver) {
     // Guarda só a melhor nota: jogar de novo nunca piora o progresso.
     store.journey[LEVELS[i].id] = Math.max(starsOf(i), stars);
     save();
-    title = stars ? t.levelDone : t.levelFail;
+    title = stars ? t("levelDone") : t("levelFail");
     canAdvance = stars > 0 && i + 1 < LEVELS.length;
-    if (stars && i + 1 === LEVELS.length) note = t.journeyDone;
-    else if (wasLocked && stars) note = t.unlocked;
+    if (stars && i + 1 === LEVELS.length) note = t("journeyDone");
+    else if (wasLocked && stars) note = t("unlocked");
     $(".end-stars").textContent = starText(stars);
-    $(".end-stars").ariaLabel = `${stars} ${t.starsOf}`;
+    $(".end-stars").ariaLabel = `${stars} ${t("starsOf")}`;
   } else {
     // Recordes: só sobrescreve se o novo valor for maior.
     const key = recordKey(session.settings);
@@ -609,7 +554,7 @@ function finish(title = t.gameOver) {
     best.streak = Math.max(best.streak, session.maxStreak);
     store.best[key] = best;
     save();
-    if (newRecord) note = $(".end-note").dataset.record;
+    if (newRecord) note = t("newRecord");
   }
 
   $(".end-title").textContent = title;
@@ -625,7 +570,7 @@ function finish(title = t.gameOver) {
   $("[data-result='streak']").textContent = session.maxStreak;
   $(".missed").textContent = session.missed.size
     ? [...session.missed].join(" ")
-    : t.noneMissed;
+    : t("noneMissed");
 
   show(end);
   showRecords();
@@ -681,13 +626,13 @@ function renderJourney() {
     const previous = LEVELS[i - 1];
     if (level.script !== previous?.script) {
       const title = document.createElement("h3");
-      title.textContent = t.scripts[level.script];
+      title.textContent = t(`scripts.${level.script}`);
       sections.push(title);
     }
     if (level.group !== previous?.group || level.script !== previous?.script) {
       section = document.createElement("section");
       const title = document.createElement("h4");
-      title.textContent = t.groups[level.group];
+      title.textContent = t(`groups.${level.group}`);
       // <ol>: a ordem dos níveis importa, então a lista é numerada.
       list = document.createElement("ol");
       list.className = "levels";
@@ -705,13 +650,13 @@ function renderJourney() {
     button.dataset.level = i;
     if (level.review) button.classList.add("is-review");
     if (i === currentLevel()) button.classList.add("is-current");
-    button.ariaLabel = `${t.level} ${i + 1}: ${levelName(level)}, ${
-      unlocked ? `${stars} ${t.starsOf}` : t.locked
+    button.ariaLabel = `${t("level")} ${i + 1}: ${levelName(level)}, ${
+      unlocked ? `${stars} ${t("starsOf")}` : t("locked")
     }`;
     button.innerHTML = `
       <span class="level-number">${i + 1}</span>
       <span class="level-name" lang="ja">${
-        level.review ? "📖 " + t.review : levelName(level)
+        level.review ? "📖 " + t("review") : levelName(level)
       }</span>
       <span class="level-stars">${unlocked ? starText(stars) : "🔒"}</span>`;
     item.append(button);
@@ -722,14 +667,17 @@ function renderJourney() {
   const passed = LEVELS.filter((_, i) => starsOf(i) > 0).length;
   const stars = LEVELS.reduce((sum, _, i) => sum + starsOf(i), 0);
   $(".journey-summary").textContent =
-    `${t.levelsPassed}: ${passed} ${t.of} ${LEVELS.length} · ` +
-    `${t.stars}: ${stars} ${t.of} ${LEVELS.length * 3}`;
+    `${t("levelsPassed")}: ${passed} ${t("of")} ${LEVELS.length} · ` +
+    `${t("stars")}: ${stars} ${t("of")} ${LEVELS.length * 3}`;
 
   // Botão "continuar" do menu aponta para o nível atual.
   const current = currentLevel();
   $(".journey-next").textContent =
-    `${t.level} ${current + 1} · ${levelName(LEVELS[current])}`;
+    `${t("level")} ${current + 1} · ${levelName(LEVELS[current])}`;
 }
 
-renderJourney();
-showRecords();
+// Só monta o que tem texto depois que a tradução estiver pronta.
+i18n.ready.then(() => {
+  renderJourney();
+  showRecords();
+});

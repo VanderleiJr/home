@@ -1,8 +1,9 @@
 /*
-  Cenário compartilhado (céu, sol e chão quadriculado) entre a página
-  inicial e todos os projetos. Um único arquivo garante que o fundo seja
-  idêntico em todas as páginas: ao navegar, nada "pula" de lugar.
-  Carregue antes do CSS da página, junto com scene.js.
+  Base compartilhada entre a página inicial e todos os projetos:
+  o cenário (céu, sol e chão quadriculado) e o seletor de idiomas.
+  Um único arquivo garante que o fundo seja idêntico em todas as
+  páginas: ao navegar, nada "pula" de lugar.
+  Carregue antes do CSS da página, junto com scene.js e i18n.js.
 */
 
 :root {
@@ -125,4 +126,32 @@
   .plane {
     animation: none;
   }
+}
+
+/* ---------- Idioma (usado pelo i18n.js em todas as páginas) ---------- */
+
+/*
+  Enquanto a tradução carrega, os textos marcados ficam invisíveis
+  (visibility mantém o espaço deles: nada pula de lugar quando aparecem).
+*/
+.i18n-pending [data-i18n],
+.i18n-pending [data-i18n-html] {
+  visibility: hidden;
+}
+
+/* Seletor de idiomas no estilo dos campos "afundados" do Windows 98. */
+.lang-select {
+  max-width: 110px;
+  padding: 1px 2px;
+  font: inherit;
+  color: #000;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow:
+    inset -1px -1px #fff,
+    inset 1px 1px #0a0a0a,
+    inset -2px -2px #dfdfdf,
+    inset 2px 2px #808080;
+  cursor: pointer;
 }

@@ -7,16 +7,7 @@
     <meta
       name="description"
       content="Página inicial do Vand Jr: pequenos projetos de HTML, CSS e JavaScript puro, com código comentado para aprender."
-    />
-    <link
-      rel="alternate"
-      hreflang="pt-BR"
-      href="https://vanderleijr.github.io/home/"
-    />
-    <link
-      rel="alternate"
-      hreflang="en"
-      href="https://vanderleijr.github.io/home/en/"
+      data-i18n-attr="content:home.description"
     />
     <!-- Favicon sem arquivo de imagem: um SVG embutido na própria URL (data URI). -->
     <link
@@ -25,8 +16,9 @@
     />
     <!-- Cenário compartilhado com todas as páginas: carregado antes do CSS próprio. -->
     <link rel="stylesheet" href="assets/scene.css" />
-    <!-- Sem defer: precisa rodar antes da primeira pintura (veja o arquivo). -->
+    <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
     <script src="assets/scene.js"></script>
+    <script src="assets/i18n.js"></script>
     <link rel="stylesheet" href="assets/home.css" />
     <!-- defer: baixa o script em paralelo, mas só executa depois de ler o HTML. -->
     <script src="assets/home.js" defer></script>
@@ -46,25 +38,39 @@
       <svg class="car"></svg>
     </div>
 
+    <!--
+      Os textos estão em português, mas cada um tem uma chave (data-i18n*).
+      O assets/i18n.js troca pelo idioma escolhido, lendo site/i18n/*.json.
+    -->
     <main class="desktop">
       <!-- Ícones da área de trabalho: data-open diz qual janela cada um abre. -->
-      <ul class="icons" aria-label="Atalhos">
+      <ul
+        class="icons"
+        aria-label="Atalhos"
+        data-i18n-attr="aria-label:home.shortcuts"
+      >
         <li>
           <button type="button" class="icon" data-open="win-welcome">
             <span class="icon-img" aria-hidden="true">💾</span>
-            <span class="icon-label">bem_vindo.exe</span>
+            <span class="icon-label" data-i18n="home.icons.welcome"
+              >bem_vindo.exe</span
+            >
           </button>
         </li>
         <li>
           <button type="button" class="icon" data-open="win-projects">
             <span class="icon-img" aria-hidden="true">📁</span>
-            <span class="icon-label">projetos</span>
+            <span class="icon-label" data-i18n="home.icons.projects"
+              >projetos</span
+            >
           </button>
         </li>
         <li>
           <button type="button" class="icon" data-open="win-about">
             <span class="icon-img" aria-hidden="true">📝</span>
-            <span class="icon-label">sobre.txt</span>
+            <span class="icon-label" data-i18n="home.icons.about"
+              >sobre.txt</span
+            >
           </button>
         </li>
         <li>
@@ -81,7 +87,9 @@
             rel="noopener"
           >
             <span class="icon-img" aria-hidden="true">🌐</span>
-            <span class="icon-label">código-fonte</span>
+            <span class="icon-label" data-i18n="home.icons.source"
+              >código-fonte</span
+            >
           </a>
         </li>
       </ul>
@@ -93,7 +101,10 @@
         aria-labelledby="win-welcome-title"
       >
         <div class="titlebar">
-          <span class="titlebar-text" id="win-welcome-title"
+          <span
+            class="titlebar-text"
+            id="win-welcome-title"
+            data-i18n="home.welcome.title"
             >💾 bem_vindo.exe</span
           >
           <div class="titlebar-controls">
@@ -102,12 +113,14 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimizar"
+              data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
             ></button>
           </div>
         </div>
@@ -116,22 +129,28 @@
             VAND JR
             <span lang="ja">ホーム</span>
           </h1>
-          <p>
+          <p data-i18n-html="home.welcome.intro">
             Bem-vindo à minha página inicial! Aqui ficam pequenos projetos
             feitos só com
             <strong>HTML, CSS e JavaScript puro</strong>, sem frameworks. O
             código é aberto e comentado: abra o código-fonte e aprenda junto.
           </p>
           <div class="marquee">
-            <span
+            <span data-i18n="home.welcome.marquee"
               >★ Melhor visualizado em qualquer navegador moderno ★ Sem
               frameworks, só a web ★ Novos projetos em breve ★ Use as setas ← ↑
               → ↓ para dirigir o carro ★</span
             >
           </div>
-          <p class="construction"><span>🚧 EM CONSTRUÇÃO 🚧</span></p>
+          <p class="construction">
+            <span data-i18n="home.welcome.construction"
+              >🚧 EM CONSTRUÇÃO 🚧</span
+            >
+          </p>
           <p class="counter-row">
-            Suas visitas neste navegador:
+            <span data-i18n="home.welcome.visits"
+              >Suas visitas neste navegador:</span
+            >
             <span class="counter">000001</span>
           </p>
         </div>
@@ -143,7 +162,10 @@
         aria-labelledby="win-projects-title"
       >
         <div class="titlebar">
-          <span class="titlebar-text" id="win-projects-title"
+          <span
+            class="titlebar-text"
+            id="win-projects-title"
+            data-i18n="home.projects.title"
             >📁 C:\home\projetos</span
           >
           <div class="titlebar-controls">
@@ -152,26 +174,33 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimizar"
+              data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
             ></button>
           </div>
         </div>
         <div class="window-body">
-          <p class="field address">C:\home\projetos\</p>
+          <p class="field address" data-i18n="home.projects.address">
+            C:\home\projetos\
+          </p>
           <!-- Cada projeto novo vira um <li><a href="projects/slug/">…</a></li> aqui. -->
           <ul class="field file-list">
             <li>
-              <a href="projects/kana/"
+              <a href="projects/kana/" data-i18n="home.projects.kana"
                 >🎴 kana.exe — aprenda hiragana e katakana</a
               >
             </li>
           </ul>
-          <p class="statusbar"><span class="count">0</span> objeto(s)</p>
+          <p class="statusbar">
+            <span class="count">0</span>
+            <span data-i18n="home.projects.objects">objeto(s)</span>
+          </p>
         </div>
       </section>
 
@@ -182,7 +211,10 @@
         hidden
       >
         <div class="titlebar">
-          <span class="titlebar-text" id="win-about-title"
+          <span
+            class="titlebar-text"
+            id="win-about-title"
+            data-i18n="home.about.title"
             >📝 sobre.txt - Bloco de notas</span
           >
           <div class="titlebar-controls">
@@ -191,25 +223,27 @@
               class="btn"
               data-action="minimize"
               aria-label="Minimizar"
+              data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
               class="btn"
               data-action="close"
               aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
             ></button>
           </div>
         </div>
         <div class="window-body">
           <div class="field">
-            <p>Oi! Eu sou o Vand Jr.</p>
-            <p>
+            <p data-i18n="home.about.hi">Oi! Eu sou o Vand Jr.</p>
+            <p data-i18n="home.about.text">
               Este site é um laboratório: cada projeto é pequeno, feito para
               aprender um conceito de HTML, CSS ou JavaScript, e tem o código
               comentado explicando o porquê de cada escolha.
             </p>
             <p>
-              Código no GitHub:
+              <span data-i18n="home.about.code">Código no GitHub:</span>
               <a
                 href="https://github.com/VanderleiJr/home"
                 target="_blank"
@@ -228,32 +262,63 @@
         class="btn start-button"
         aria-expanded="false"
         aria-controls="start-menu"
+        data-i18n="home.start.button"
       >
         🌴 Iniciar
       </button>
 
-      <nav class="start-menu" id="start-menu" aria-label="Menu Iniciar" hidden>
+      <nav
+        class="start-menu"
+        id="start-menu"
+        aria-label="Menu Iniciar"
+        data-i18n-attr="aria-label:home.start.menu"
+        hidden
+      >
         <span class="start-side" aria-hidden="true">vand jr ✦ home</span>
         <ul class="start-items">
           <li>
-            <button type="button" data-open="win-welcome">💾 Bem-vindo</button>
+            <button
+              type="button"
+              data-open="win-welcome"
+              data-i18n="home.start.welcome"
+            >
+              💾 Bem-vindo
+            </button>
           </li>
           <li>
-            <button type="button" data-open="win-projects">📁 Projetos</button>
+            <button
+              type="button"
+              data-open="win-projects"
+              data-i18n="home.start.projects"
+            >
+              📁 Projetos
+            </button>
           </li>
-          <li><button type="button" data-open="win-about">📝 Sobre</button></li>
+          <li>
+            <button
+              type="button"
+              data-open="win-about"
+              data-i18n="home.start.about"
+            >
+              📝 Sobre
+            </button>
+          </li>
           <li>
             <a
               href="https://github.com/VanderleiJr/home"
               target="_blank"
               rel="noopener"
+              data-i18n="home.start.source"
               >🌐 Código-fonte</a
             >
           </li>
           <li class="separator" aria-hidden="true"></li>
-          <li><a href="en/" hreflang="en" lang="en">🇬🇧 English version</a></li>
           <li>
-            <button type="button" data-action="close-all">
+            <button
+              type="button"
+              data-action="close-all"
+              data-i18n="home.start.closeAll"
+            >
               ⏻ Fechar janelas
             </button>
           </li>
@@ -272,11 +337,20 @@
           aria-label="Dirigir inclinando o celular"
           title="Dirigir inclinando o celular"
           data-unavailable="Giroscópio indisponível neste aparelho"
+          data-i18n-attr="aria-label:home.gyro.label, title:home.gyro.label, data-unavailable:home.gyro.unavailable"
           hidden
         >
           🎮
         </button>
-        <a href="en/" hreflang="en" lang="en" title="English version">EN</a>
+        <!-- O i18n.js preenche as opções a partir de site/i18n/languages.json. -->
+        <select
+          class="lang-select"
+          aria-label="Idioma"
+          data-lang-select
+          data-i18n-attr="aria-label:common.language"
+        >
+          <option value="pt-BR" lang="pt-BR">Português</option>
+        </select>
         <time class="clock">--:--</time>
       </div>
     </footer>

@@ -155,20 +155,20 @@ document.addEventListener("keydown", (event) => {
 
 /* ---------- Relógio da bandeja ---------- */
 
-// Intl.DateTimeFormat formata a hora no idioma da página (<html lang>).
+// toLocaleTimeString formata a hora no idioma escolhido (i18n.lang).
 const clock = document.querySelector(".clock");
-const timeFormat = new Intl.DateTimeFormat(document.documentElement.lang, {
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 function tick() {
   const now = new Date();
-  clock.textContent = timeFormat.format(now);
+  clock.textContent = now.toLocaleTimeString(i18n.lang, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   clock.dateTime = now.toISOString();
 }
 
-tick();
+// O idioma só é conhecido depois que o i18n.js termina de carregar.
+i18n.ready.then(tick);
 setInterval(tick, 15_000);
 
 /* ---------- Contador de visitas ---------- */
@@ -661,3 +661,5 @@ requestAnimationFrame(drive);
 /* ---------- Estado inicial ---------- */
 
 focusWindow(document.getElementById("win-welcome"));
+// Os botões da barra de tarefas copiam o título das janelas: refaz após a tradução.
+i18n.ready.then(updateTasks);

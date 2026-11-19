@@ -7,25 +7,17 @@
     <meta
       name="description"
       content="Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo e modo infinito. HTML, CSS e JavaScript puro."
-    />
-    <link
-      rel="alternate"
-      hreflang="pt-BR"
-      href="https://vanderleijr.github.io/home/projects/kana/"
-    />
-    <link
-      rel="alternate"
-      hreflang="en"
-      href="https://vanderleijr.github.io/home/en/projects/kana/"
+      data-i18n-attr="content:kana.description"
     />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>"
     />
-    <!-- Cenário compartilhado com todas as páginas: carregado antes do CSS próprio. -->
+    <!-- Cenário e tradução compartilhados com todas as páginas. -->
     <link rel="stylesheet" href="../../assets/scene.css" />
-    <!-- Sem defer: precisa rodar antes da primeira pintura (veja o arquivo). -->
+    <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
     <script src="../../assets/scene.js"></script>
+    <script src="../../assets/i18n.js"></script>
     <link rel="stylesheet" href="kana.css" />
     <script src="kana.js" defer></script>
   </head>
@@ -35,6 +27,7 @@
       <div class="floor"><div class="plane"></div></div>
     </div>
 
+    <!-- Textos em português com chaves data-i18n*: o i18n.js traduz (site/i18n/*.json). -->
     <main class="desktop">
       <section class="window win-game" aria-labelledby="game-title">
         <div class="titlebar">
@@ -46,6 +39,7 @@
               href="../../"
               aria-label="Fechar e voltar à página inicial"
               title="Voltar à página inicial"
+              data-i18n-attr="aria-label:kana.close, title:kana.back"
             ></a>
           </div>
         </div>
@@ -56,20 +50,20 @@
             vez, e o Enter já envia o formulário sem nenhum código extra.
           -->
           <form class="screen screen-menu">
-            <p class="intro">
+            <p class="intro" data-i18n="kana.intro">
               Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê.
             </p>
 
             <!-- fieldset + legend: a "caixa de grupo" clássica do Windows 98. -->
             <fieldset>
-              <legend>Resposta</legend>
+              <legend data-i18n="kana.answer">Resposta</legend>
               <label
                 ><input type="radio" name="answer" value="choice" checked />
-                Múltipla escolha</label
+                <span data-i18n="kana.choice">Múltipla escolha</span></label
               >
               <label
                 ><input type="radio" name="answer" value="type" />
-                Digitar</label
+                <span data-i18n="kana.type">Digitar</span></label
               >
             </fieldset>
 
@@ -80,13 +74,14 @@
               value="journey"
               formnovalidate
             >
-              🗺 Jornada <small class="journey-next"></small>
+              <span data-i18n="kana.journey">🗺 Jornada</span>
+              <small class="journey-next"></small>
             </button>
 
             <fieldset class="free">
-              <legend>Modo livre</legend>
+              <legend data-i18n="kana.free">Modo livre</legend>
               <fieldset>
-                <legend>Alfabeto</legend>
+                <legend data-i18n="kana.alphabet">Alfabeto</legend>
                 <label
                   ><input type="radio" name="script" value="hiragana" checked />
                   Hiragana <span lang="ja">あ</span></label
@@ -96,16 +91,17 @@
                   Katakana <span lang="ja">ア</span></label
                 >
                 <label
-                  ><input type="radio" name="script" value="both" /> Os
-                  dois</label
+                  ><input type="radio" name="script" value="both" />
+                  <span data-i18n="kana.both">Os dois</span></label
                 >
               </fieldset>
 
               <fieldset>
-                <legend>Grupos</legend>
+                <legend data-i18n="kana.groupsLabel">Grupos</legend>
                 <label
                   ><input type="checkbox" name="groups" value="base" checked />
-                  Básicos <span lang="ja">かな</span></label
+                  <span data-i18n="kana.basic">Básicos</span>
+                  <span lang="ja">かな</span></label
                 >
                 <label
                   ><input type="checkbox" name="groups" value="dakuten" />
@@ -113,20 +109,27 @@
                 >
                 <label
                   ><input type="checkbox" name="groups" value="yoon" />
-                  Combinados <span lang="ja">きゃ</span></label
+                  <span data-i18n="kana.combined">Combinados</span>
+                  <span lang="ja">きゃ</span></label
                 >
               </fieldset>
 
               <div class="modes">
                 <button type="submit" class="btn mode" value="timed">
-                  ⏱ Contra o tempo <small>60 s · errar custa 3 s</small>
+                  <span data-i18n="kana.timed">⏱ Contra o tempo</span>
+                  <small data-i18n="kana.timedHint"
+                    >60 s · errar custa 3 s</small
+                  >
                 </button>
                 <button type="submit" class="btn mode" value="endless">
-                  ∞ Infinito <small>sem relógio, no seu ritmo</small>
+                  <span data-i18n="kana.endless">∞ Infinito</span>
+                  <small data-i18n="kana.endlessHint"
+                    >sem relógio, no seu ritmo</small
+                  >
                 </button>
               </div>
 
-              <p class="field records">
+              <p class="field records" data-i18n-html="kana.records">
                 🏆 Recordes nesta configuração:
                 <b data-best="timed">0</b> pontos · sequência de
                 <b data-best="streak">0</b>
@@ -135,10 +138,18 @@
           </form>
 
           <!-- Tela 2: o jogo. -->
-          <section class="screen screen-game" aria-label="Jogo" hidden>
+          <section
+            class="screen screen-game"
+            aria-label="Jogo"
+            data-i18n-attr="aria-label:kana.game"
+            hidden
+          >
             <p class="game-level" hidden></p>
             <div class="hud">
-              <p class="field">Pontos <output class="score">0</output></p>
+              <p class="field">
+                <span data-i18n="kana.score">Pontos</span>
+                <output class="score">0</output>
+              </p>
               <p class="field">Combo <output class="combo">×1</output></p>
               <p class="field">
                 <span class="hud-mode-label">Tempo</span>
@@ -161,7 +172,7 @@
 
             <div class="choices"></div>
             <form class="typing" hidden>
-              <label for="typing-input">Como se lê?</label>
+              <label for="typing-input" data-i18n="kana.how">Como se lê?</label>
               <input
                 id="typing-input"
                 class="field"
@@ -176,35 +187,56 @@
 
             <p class="game-actions">
               <button type="button" class="btn" data-action="quit">
-                Encerrar <kbd>Esc</kbd>
+                <span data-i18n="kana.quit">Encerrar</span> <kbd>Esc</kbd>
               </button>
             </p>
           </section>
 
           <!-- Tela 3: resultado. -->
           <section class="screen screen-end" aria-labelledby="end-title" hidden>
-            <h2 class="end-title" id="end-title">Fim de jogo!</h2>
+            <h2 class="end-title" id="end-title" data-i18n="kana.gameOver">
+              Fim de jogo!
+            </h2>
             <p class="end-stars" role="img" hidden></p>
-            <p class="end-note" data-record="★ NOVO RECORDE ★" hidden></p>
+            <p class="end-note" hidden></p>
             <dl class="field results">
-              <dt>Pontos</dt>
+              <dt data-i18n="kana.score">Pontos</dt>
               <dd data-result="score">0</dd>
-              <dt>Acertos</dt>
+              <dt data-i18n="kana.hits">Acertos</dt>
               <dd data-result="hits">0</dd>
-              <dt>Precisão</dt>
+              <dt data-i18n="kana.accuracy">Precisão</dt>
               <dd data-result="accuracy">—</dd>
-              <dt>Maior sequência</dt>
+              <dt data-i18n="kana.bestStreak">Maior sequência</dt>
               <dd data-result="streak">0</dd>
             </dl>
-            <p>Para revisar: <span class="missed" lang="ja"></span></p>
+            <p>
+              <span data-i18n="kana.toReview">Para revisar:</span>
+              <span class="missed" lang="ja"></span>
+            </p>
             <p class="end-actions">
-              <button type="button" class="btn" data-action="next-level" hidden>
+              <button
+                type="button"
+                class="btn"
+                data-action="next-level"
+                data-i18n="kana.nextLevel"
+                hidden
+              >
                 Próximo nível ▶
               </button>
-              <button type="button" class="btn" data-action="again">
+              <button
+                type="button"
+                class="btn"
+                data-action="again"
+                data-i18n="kana.again"
+              >
                 ↻ Jogar de novo
               </button>
-              <button type="button" class="btn" data-action="menu">
+              <button
+                type="button"
+                class="btn"
+                data-action="menu"
+                data-i18n="kana.menu"
+              >
                 ☰ Menu
               </button>
             </p>
@@ -214,10 +246,16 @@
 
       <section class="window win-journey" aria-labelledby="journey-title">
         <div class="titlebar">
-          <h2 class="titlebar-text" id="journey-title">🗺 jornada.txt</h2>
+          <h2
+            class="titlebar-text"
+            id="journey-title"
+            data-i18n="kana.journeyTitle"
+          >
+            🗺 jornada.txt
+          </h2>
         </div>
         <div class="window-body">
-          <p>
+          <p data-i18n-html="kana.journeyHelp">
             Cada nível pede <b>70%</b> de acertos (★) para liberar o próximo. ★★
             = 90% · ★★★ = sem erros. Este progresso fica salvo e não se perde.
           </p>
@@ -229,16 +267,21 @@
     </main>
 
     <footer class="taskbar">
-      <a class="btn start-button" href="../../">🌴 Início</a>
-      <span class="taskbar-hint">Progresso salvo neste navegador</span>
+      <a class="btn start-button" href="../../" data-i18n="kana.home"
+        >🌴 Início</a
+      >
+      <span class="taskbar-hint" data-i18n="kana.saved"
+        >Progresso salvo neste navegador</span
+      >
       <div class="tray">
-        <a
-          href="../../en/projects/kana/"
-          hreflang="en"
-          lang="en"
-          title="English version"
-          >EN</a
+        <select
+          class="lang-select"
+          aria-label="Idioma"
+          data-lang-select
+          data-i18n-attr="aria-label:common.language"
         >
+          <option value="pt-BR" lang="pt-BR">Português</option>
+        </select>
       </div>
     </footer>
   </body>

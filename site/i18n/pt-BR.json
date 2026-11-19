@@ -1,0 +1,112 @@
+{
+  "common": {
+    "language": "Idioma",
+    "minimize": "Minimizar",
+    "close": "Fechar"
+  },
+  "home": {
+    "description": "Página inicial do Vand Jr: pequenos projetos de HTML, CSS e JavaScript puro, com código comentado para aprender.",
+    "shortcuts": "Atalhos",
+    "icons": {
+      "welcome": "bem_vindo.exe",
+      "projects": "projetos",
+      "about": "sobre.txt",
+      "source": "código-fonte"
+    },
+    "welcome": {
+      "title": "💾 bem_vindo.exe",
+      "intro": "Bem-vindo à minha página inicial! Aqui ficam pequenos projetos feitos só com <strong>HTML, CSS e JavaScript puro</strong>, sem frameworks. O código é aberto e comentado: abra o código-fonte e aprenda junto.",
+      "marquee": "★ Melhor visualizado em qualquer navegador moderno ★ Sem frameworks, só a web ★ Novos projetos em breve ★ Use as setas ← ↑ → ↓ para dirigir o carro ★",
+      "construction": "🚧 EM CONSTRUÇÃO 🚧",
+      "visits": "Suas visitas neste navegador:"
+    },
+    "projects": {
+      "title": "📁 C:\\home\\projetos",
+      "address": "C:\\home\\projetos\\",
+      "kana": "🎴 kana.exe — aprenda hiragana e katakana",
+      "objects": "objeto(s)"
+    },
+    "about": {
+      "title": "📝 sobre.txt - Bloco de notas",
+      "hi": "Oi! Eu sou o Vand Jr.",
+      "text": "Este site é um laboratório: cada projeto é pequeno, feito para aprender um conceito de HTML, CSS ou JavaScript, e tem o código comentado explicando o porquê de cada escolha.",
+      "code": "Código no GitHub:"
+    },
+    "start": {
+      "button": "🌴 Iniciar",
+      "menu": "Menu Iniciar",
+      "welcome": "💾 Bem-vindo",
+      "projects": "📁 Projetos",
+      "about": "📝 Sobre",
+      "source": "🌐 Código-fonte",
+      "closeAll": "⏻ Fechar janelas"
+    },
+    "gyro": {
+      "label": "Dirigir inclinando o celular",
+      "unavailable": "Giroscópio indisponível neste aparelho"
+    }
+  },
+  "kana": {
+    "description": "Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo e modo infinito. HTML, CSS e JavaScript puro.",
+    "close": "Fechar e voltar à página inicial",
+    "back": "Voltar à página inicial",
+    "intro": "Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê.",
+    "answer": "Resposta",
+    "choice": "Múltipla escolha",
+    "type": "Digitar",
+    "journey": "🗺 Jornada",
+    "free": "Modo livre",
+    "alphabet": "Alfabeto",
+    "both": "Os dois",
+    "groupsLabel": "Grupos",
+    "basic": "Básicos",
+    "combined": "Combinados",
+    "timed": "⏱ Contra o tempo",
+    "timedHint": "60 s · errar custa 3 s",
+    "endless": "∞ Infinito",
+    "endlessHint": "sem relógio, no seu ritmo",
+    "records": "🏆 Recordes nesta configuração: <b data-best=\"timed\">0</b> pontos · sequência de <b data-best=\"streak\">0</b>",
+    "game": "Jogo",
+    "score": "Pontos",
+    "how": "Como se lê?",
+    "quit": "Encerrar",
+    "hits": "Acertos",
+    "accuracy": "Precisão",
+    "bestStreak": "Maior sequência",
+    "toReview": "Para revisar:",
+    "nextLevel": "Próximo nível ▶",
+    "again": "↻ Jogar de novo",
+    "menu": "☰ Menu",
+    "journeyTitle": "🗺 jornada.txt",
+    "journeyHelp": "Cada nível pede <b>70%</b> de acertos (★) para liberar o próximo. ★★ = 90% · ★★★ = sem erros. Este progresso fica salvo e não se perde.",
+    "home": "🌴 Início",
+    "saved": "Progresso salvo neste navegador",
+    "hit": "✔ Certo!",
+    "miss": "✘ Era",
+    "timeUp": "⏱ Tempo esgotado!",
+    "gameOver": "Fim de jogo!",
+    "time": "Tempo",
+    "streak": "Sequência",
+    "question": "Questão",
+    "noneMissed": "nenhum — perfeito!",
+    "needGroup": "Escolha pelo menos um grupo.",
+    "level": "Nível",
+    "review": "Revisão",
+    "locked": "bloqueado",
+    "starsOf": "estrelas de 3",
+    "levelDone": "Nível concluído!",
+    "levelFail": "Quase! Acerte 70% para passar.",
+    "unlocked": "🔓 Próximo nível liberado!",
+    "journeyDone": "🎌 Jornada completa! おめでとう!",
+    "newRecord": "★ NOVO RECORDE ★",
+    "stars": "Estrelas",
+    "of": "de",
+    "levelsPassed": "Níveis concluídos",
+    "scripts": { "hiragana": "Hiragana", "katakana": "Katakana" },
+    "groups": {
+      "base": "Básicos",
+      "dakuten": "Dakuten ゛ e handakuten ゜",
+      "yoon": "Combinados (yōon)"
+    }
+  }
+}
