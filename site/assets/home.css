@@ -1,0 +1,692 @@
+/*
+  Estilo da página inicial: "desktop" anos 90 com estética vaporwave.
+  Tudo é CSS puro — nenhuma imagem: o sol, a grade e as bordas 3D
+  são feitos com gradientes e sombras.
+*/
+
+/* Variáveis CSS (custom properties): definidas uma vez, reutilizadas em todo o arquivo. */
+:root {
+  --pink: #ff71ce;
+  --cyan: #01cdfe;
+  --mint: #05ffa1;
+  --purple: #b967ff;
+  --yellow: #fffb96;
+  --night: #1a0033;
+
+  /* Cinza clássico das interfaces dos anos 90. */
+  --face: #c0c0c0;
+  --taskbar-h: 36px;
+
+  /*
+    O "relevo" das janelas: quatro sombras internas (inset).
+    Claro em cima/esquerda e escuro embaixo/direita = parece saltado.
+    Invertendo as cores, parece afundado (botão pressionado, campo de texto).
+  */
+  --bevel-out:
+    inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080,
+    inset 2px 2px #dfdfdf;
+  --bevel-in:
+    inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf,
+    inset 2px 2px #808080;
+
+  /*
+    Geometria do chão em 3D. O JS lê estas mesmas variáveis para calcular
+    a largura da estrada na tela — uma única fonte de verdade.
+  */
+  --floor-depth: 500px;
+  --floor-tilt: 62deg;
+  --road-w: max(16vw, 96px);
+
+  --font: Tahoma, "MS Sans Serif", Verdana, sans-serif;
+  --mono: "Courier New", Courier, monospace;
+}
+
+/* Elementos com o atributo hidden somem, mesmo que outra regra defina display. */
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font: 13px/1.45 var(--font);
+  color: #000;
+  background: var(--night);
+  overflow: hidden;
+}
+
+a {
+  color: #0000ee;
+}
+
+:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* ---------- Cenário: céu, sol e chão quadriculado ---------- */
+
+/* position: fixed + inset: 0 = ocupa a tela toda e não rola junto com o conteúdo. */
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(1px 1px at 20% 15%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 8%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 85% 25%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 40% 30%, #fff 50%, transparent 51%),
+    linear-gradient(var(--night), #3d0066 45%, #ff71ce 100%);
+}
+
+/*
+  O sol listrado: um círculo com degradê, "recortado" por uma máscara.
+  A máscara (mask) usa um gradiente repetido: onde é transparente,
+  o sol some — isso cria as faixas horizontais na metade de baixo.
+*/
+.sun {
+  position: absolute;
+  left: 50%;
+  bottom: 42vh;
+  width: min(44vmin, 340px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, 30%);
+  background: linear-gradient(var(--yellow), var(--pink) 75%);
+  box-shadow: 0 0 60px var(--pink);
+  mask: linear-gradient(
+    #000 0 50%,
+    transparent 50% 54%,
+    #000 54% 62%,
+    transparent 62% 67%,
+    #000 67% 74%,
+    transparent 74% 80%,
+    #000 80% 86%,
+    transparent 86% 93%,
+    #000 93%
+  );
+}
+
+/*
+  O chão: uma grade desenhada com dois gradientes lineares (linhas
+  horizontais + verticais) e "deitada" com perspective + rotateX.
+  A animação move o fundo e dá a sensação de viajar para frente.
+*/
+.floor {
+  position: absolute;
+  inset: auto 0 0;
+  height: 42vh;
+  perspective: var(--floor-depth);
+  /* Ponto de fuga no horizonte (topo do chão), onde as linhas se encontram. */
+  perspective-origin: 50% 0;
+  overflow: hidden;
+  background: linear-gradient(#2b0045, #0d001a);
+  border-top: 2px solid var(--pink);
+  box-shadow: 0 -4px 24px var(--pink);
+}
+
+.plane {
+  position: absolute;
+  /*
+    Cuidado: girando a partir do topo, a borda de baixo "vem" na direção
+    de quem olha. Se ela passar da distância do perspective, o navegador
+    descarta o elemento inteiro — por isso a altura é a mesma do chão.
+  */
+  inset: 0 -100%;
+  background-image:
+    linear-gradient(var(--pink) 2px, transparent 2px),
+    linear-gradient(90deg, var(--pink) 2px, transparent 2px);
+  background-size: 48px 48px;
+  transform: rotateX(var(--floor-tilt));
+  transform-origin: top center;
+  animation: floor-move 1.6s linear infinite;
+}
+
+@keyframes floor-move {
+  to {
+    background-position: 0 48px;
+  }
+}
+
+/*
+  A estrada é filha do plano: herda a inclinação 3D sem precisar de
+  transform próprio de perspectiva. A faixa central tracejada é um
+  gradiente repetido que anda na mesma velocidade da grade (48px a cada 1,6s).
+*/
+.road {
+  position: absolute;
+  inset: 0 auto;
+  left: 50%;
+  width: var(--road-w);
+  transform: translateX(-50%);
+  background:
+    linear-gradient(var(--yellow) 0 50%, transparent 0) 50% 0 / 4px 48px
+      repeat-y,
+    #12001f;
+  border-inline: 3px solid var(--cyan);
+  box-shadow:
+    0 0 14px var(--cyan),
+    inset 0 0 14px rgb(1 205 254 / 0.5);
+  animation: road-move 1.6s linear infinite;
+}
+
+@keyframes road-move {
+  to {
+    background-position: 50% 48px;
+  }
+}
+
+/*
+  O carro fica fora do plano 3D (sempre "de pé") e é posicionado por
+  duas variáveis que o JS atualiza: --car-x (deslocamento lateral) e
+  --car-tilt (inclinação nas curvas).
+*/
+.car {
+  position: absolute;
+  bottom: calc(var(--taskbar-h) + 6px);
+  left: 50%;
+  width: clamp(90px, 10vw, 140px);
+  transform: translateX(calc(-50% + var(--car-x, 0px)))
+    rotate(var(--car-tilt, 0deg));
+  filter: drop-shadow(0 0 5px var(--cyan));
+}
+
+.car svg {
+  display: block;
+  width: 100%;
+  /* Trepidação do motor: dois "quadros" alternando 1px. */
+  animation: engine 0.24s steps(1) infinite;
+}
+
+@keyframes engine {
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+/* Estilo do SVG também é CSS: fill = preenchimento, stroke = contorno. */
+.car-body {
+  fill: rgb(26 0 51 / 0.9);
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+
+.car-line {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+
+.car-light {
+  fill: #ff2a6d;
+  stroke: var(--pink);
+}
+
+.car-wheel {
+  fill: #000;
+  stroke: var(--pink);
+  stroke-width: 1.5;
+}
+
+/* ---------- Área de trabalho e ícones ---------- */
+
+.desktop {
+  position: relative;
+  height: calc(100dvh - var(--taskbar-h));
+}
+
+.icons {
+  position: absolute;
+  top: 16px;
+  left: 12px;
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icon {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 84px;
+  padding: 4px;
+  font: inherit;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.icon-img {
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(2px 2px 0 rgb(0 0 0 / 0.5));
+}
+
+.icon-label {
+  padding: 0 3px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.icon:hover .icon-label,
+.icon:focus-visible .icon-label {
+  background: var(--purple);
+}
+
+/* ---------- Janelas ---------- */
+
+.window {
+  position: absolute;
+  max-width: calc(100% - 24px);
+  padding: 3px;
+  background: var(--face);
+  /* Relevo + uma sombra deslocada sem desfoque, bem "retrô". */
+  box-shadow:
+    var(--bevel-out),
+    8px 8px 0 rgb(0 0 0 / 0.35);
+}
+
+/* Posições iniciais em telas largas; depois o JS permite arrastar. */
+.win-welcome {
+  top: 32px;
+  left: 140px;
+  width: min(520px, 100% - 160px);
+}
+
+.win-projects {
+  top: 120px;
+  left: min(700px, 100% - 400px);
+  width: 380px;
+}
+
+.win-about {
+  top: 170px;
+  left: 220px;
+  width: 420px;
+}
+
+.window.is-minimized {
+  display: none;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 3px 3px 6px;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(
+    90deg,
+    var(--pink),
+    var(--purple) 60%,
+    var(--cyan)
+  );
+  cursor: grab;
+  /* Impede o navegador de rolar a página enquanto arrastamos com o dedo. */
+  touch-action: none;
+  user-select: none;
+}
+
+/* Janela sem foco: barra de título acinzentada. */
+.window:not(.is-active) .titlebar {
+  color: #e0e0e0;
+  background: linear-gradient(90deg, #808080, #b5b5b5);
+}
+
+.titlebar-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.titlebar-controls {
+  display: flex;
+  gap: 2px;
+}
+
+/* Botões no estilo da época: relevo para fora; ao clicar, relevo para dentro. */
+.btn {
+  min-width: 18px;
+  padding: 2px 6px;
+  font: inherit;
+  color: #000;
+  background: var(--face);
+  border: 0;
+  box-shadow: var(--bevel-out);
+  cursor: pointer;
+}
+
+.btn:active,
+.btn[aria-pressed="true"] {
+  box-shadow: var(--bevel-in);
+}
+
+.titlebar .btn {
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.window-body {
+  padding: 12px;
+}
+
+.window-body > :first-child {
+  margin-top: 0;
+}
+
+.window-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* Campo "afundado": endereço da pasta, área de texto, contador. */
+.field {
+  padding: 4px 6px;
+  background: #fff;
+  box-shadow: var(--bevel-in);
+}
+
+/* ---------- Conteúdo da janela de boas-vindas ---------- */
+
+/*
+  Texto com degradê: o fundo recebe o gradiente e background-clip: text
+  faz ele aparecer só dentro das letras (a cor do texto fica transparente).
+*/
+.headline {
+  margin: 0 0 8px;
+  font:
+    900 clamp(28px, 6vw, 44px) / 1.1 "Arial Black",
+    Impact,
+    sans-serif;
+  letter-spacing: 0.12em;
+  background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(3px 3px 0 #000);
+}
+
+.headline span {
+  display: block;
+  font-size: 0.5em;
+  letter-spacing: 0.4em;
+}
+
+/*
+  Letreiro rolante. A tag <marquee> foi abandonada pelos padrões web,
+  então recriamos o efeito com uma animação de transform.
+*/
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 4px 0;
+  font-family: var(--mono);
+  color: var(--mint);
+  background: #000;
+  box-shadow: var(--bevel-in);
+}
+
+.marquee span {
+  display: inline-block;
+  padding-left: 100%;
+  animation: marquee 18s linear infinite;
+  /* Atraso negativo: a animação já começa "no meio", com o texto visível. */
+  animation-delay: -7s;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Faixa "em construção": listras diagonais com repeating-linear-gradient. */
+.construction {
+  margin: 12px 0;
+  padding: 6px;
+  font-weight: bold;
+  text-align: center;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--yellow) 0 14px,
+    #000 14px 28px
+  );
+}
+
+.construction span {
+  padding: 2px 8px;
+  background: var(--yellow);
+}
+
+.counter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.counter {
+  padding: 2px 6px;
+  font: bold 16px var(--mono);
+  letter-spacing: 0.2em;
+  color: #ff3b3b;
+  background: #000;
+  box-shadow: var(--bevel-in);
+}
+
+/* ---------- Janela de projetos (estilo explorador de arquivos) ---------- */
+
+.address {
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+
+.file-list {
+  min-height: 120px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.file-list .empty {
+  color: #555;
+}
+
+/* Cursor piscando: animação em "degraus" (steps) liga e desliga sem transição. */
+.cursor {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.statusbar {
+  margin-top: 6px;
+  padding: 2px 6px;
+  box-shadow: var(--bevel-in);
+}
+
+/* ---------- Barra de tarefas e menu Iniciar ---------- */
+
+.taskbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--taskbar-h);
+  padding: 3px;
+  background: var(--face);
+  box-shadow:
+    inset 0 1px #fff,
+    inset 0 2px #dfdfdf;
+}
+
+.start-button {
+  height: 100%;
+  font-weight: bold;
+}
+
+.tasks {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+}
+
+.task {
+  flex: 0 1 170px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.task[aria-pressed="true"] {
+  font-weight: bold;
+  background: #e0e0e0;
+}
+
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 10px;
+  box-shadow: var(--bevel-in);
+}
+
+.tray-btn {
+  padding: 0;
+  font: inherit;
+  font-size: 16px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.tray-btn[aria-pressed="true"] {
+  filter: drop-shadow(0 0 4px var(--pink));
+}
+
+.start-menu {
+  position: fixed;
+  bottom: var(--taskbar-h);
+  left: 2px;
+  z-index: 1001;
+  display: flex;
+  width: 230px;
+  padding: 3px;
+  background: var(--face);
+  box-shadow: var(--bevel-out);
+}
+
+/* Faixa lateral com texto vertical: writing-mode gira o fluxo do texto. */
+.start-side {
+  padding: 8px 4px;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: #fff;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  background: linear-gradient(var(--cyan), var(--purple), var(--pink));
+}
+
+.start-items {
+  flex: 1;
+  margin: 0;
+  padding: 2px 0;
+  list-style: none;
+}
+
+.start-items a,
+.start-items button {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  color: #000;
+  text-align: left;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.start-items a:hover,
+.start-items button:hover,
+.start-items a:focus-visible,
+.start-items button:focus-visible {
+  color: #fff;
+  background: var(--purple);
+}
+
+.start-items .separator {
+  margin: 3px 4px;
+  border-top: 1px solid #808080;
+  border-bottom: 1px solid #fff;
+}
+
+/* ---------- Telas pequenas: janelas empilhadas, sem arrastar ---------- */
+
+/* Media query: estas regras só valem quando a tela tem até 719px de largura. */
+@media (max-width: 719px) {
+  body {
+    overflow: auto;
+  }
+
+  .desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: auto;
+    /* Espaço extra no fim da rolagem para a estrada e o carro aparecerem. */
+    padding: 12px 12px calc(var(--taskbar-h) + 45vh);
+  }
+
+  .icons {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .window {
+    position: static;
+    width: auto;
+    max-width: none;
+  }
+
+  .titlebar {
+    cursor: default;
+  }
+}
+
+/* Respeita quem pediu ao sistema para reduzir animações. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before {
+    animation: none !important;
+  }
+}

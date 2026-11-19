@@ -3,12 +3,295 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vand Jr</title>
-    <link rel="alternate" hreflang="pt-BR" href="./" />
-    <link rel="alternate" hreflang="en" href="en/" />
+    <title>Vand Jr ✦ home</title>
+    <meta
+      name="description"
+      content="Página inicial do Vand Jr: pequenos projetos de HTML, CSS e JavaScript puro, com código comentado para aprender."
+    />
+    <link
+      rel="alternate"
+      hreflang="pt-BR"
+      href="https://vanderleijr.github.io/home/"
+    />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://vanderleijr.github.io/home/en/"
+    />
+    <!-- Favicon sem arquivo de imagem: um SVG embutido na própria URL (data URI). -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>"
+    />
+    <link rel="stylesheet" href="assets/home.css" />
+    <!-- defer: baixa o script em paralelo, mas só executa depois de ler o HTML. -->
+    <script src="assets/home.js" defer></script>
   </head>
   <body>
-    <nav><a href="en/" lang="en">English</a></nav>
-    <h1>Bem-vindo ao meu domínio.</h1>
+    <!-- Cenário decorativo: aria-hidden esconde de leitores de tela. -->
+    <div class="scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="floor">
+        <!-- O plano inclinado em 3D: a grade e a estrada são desenhadas nele. -->
+        <div class="plane"><div class="road"></div></div>
+      </div>
+      <!--
+        Carro em SVG inline: um desenho vetorial escrito direto no HTML,
+        com formas simples (retângulos e caminhos) vistas de trás.
+      -->
+      <div class="car">
+        <svg viewBox="0 0 120 64">
+          <path class="car-body" d="M26 26 36 8h48l10 18z" />
+          <path class="car-line" d="M38 12h44l6 12H32z" />
+          <rect class="car-body" x="6" y="26" width="108" height="22" />
+          <rect class="car-light" x="10" y="30" width="100" height="7" />
+          <rect class="car-line" x="48" y="40" width="24" height="6" />
+          <path class="car-line" d="M2 22h116M18 22v4m84-4v4M6 48h108" />
+          <rect class="car-wheel" x="12" y="48" width="20" height="12" />
+          <rect class="car-wheel" x="88" y="48" width="20" height="12" />
+        </svg>
+      </div>
+    </div>
+
+    <main class="desktop">
+      <!-- Ícones da área de trabalho: data-open diz qual janela cada um abre. -->
+      <ul class="icons" aria-label="Atalhos">
+        <li>
+          <button type="button" class="icon" data-open="win-welcome">
+            <span class="icon-img" aria-hidden="true">💾</span>
+            <span class="icon-label">bem_vindo.exe</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="icon" data-open="win-projects">
+            <span class="icon-img" aria-hidden="true">📁</span>
+            <span class="icon-label">projetos</span>
+          </button>
+        </li>
+        <li>
+          <button type="button" class="icon" data-open="win-about">
+            <span class="icon-img" aria-hidden="true">📝</span>
+            <span class="icon-label">sobre.txt</span>
+          </button>
+        </li>
+        <li>
+          <a
+            class="icon"
+            href="https://github.com/VanderleiJr/home"
+            target="_blank"
+            rel="noopener"
+          >
+            <span class="icon-img" aria-hidden="true">🌐</span>
+            <span class="icon-label">código-fonte</span>
+          </a>
+        </li>
+      </ul>
+
+      <!-- Cada janela é uma <section>; aria-labelledby usa o título como nome dela. -->
+      <section
+        class="window win-welcome"
+        id="win-welcome"
+        aria-labelledby="win-welcome-title"
+      >
+        <div class="titlebar">
+          <span class="titlebar-text" id="win-welcome-title"
+            >💾 bem_vindo.exe</span
+          >
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn"
+              data-action="minimize"
+              aria-label="Minimizar"
+            >
+              _
+            </button>
+            <button
+              type="button"
+              class="btn"
+              data-action="close"
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="window-body">
+          <h1 class="headline">
+            VAND JR
+            <span lang="ja">ホーム</span>
+          </h1>
+          <p>
+            Bem-vindo à minha página inicial! Aqui ficam pequenos projetos
+            feitos só com
+            <strong>HTML, CSS e JavaScript puro</strong>, sem frameworks. O
+            código é aberto e comentado: abra o código-fonte e aprenda junto.
+          </p>
+          <div class="marquee">
+            <span
+              >★ Melhor visualizado em qualquer navegador moderno ★ Sem
+              frameworks, só a web ★ Novos projetos em breve ★ Use ← → para
+              dirigir o carro ★</span
+            >
+          </div>
+          <p class="construction"><span>🚧 EM CONSTRUÇÃO 🚧</span></p>
+          <p class="counter-row">
+            Suas visitas neste navegador:
+            <span class="counter">000001</span>
+          </p>
+        </div>
+      </section>
+
+      <section
+        class="window win-projects"
+        id="win-projects"
+        aria-labelledby="win-projects-title"
+      >
+        <div class="titlebar">
+          <span class="titlebar-text" id="win-projects-title"
+            >📁 C:\home\projetos</span
+          >
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn"
+              data-action="minimize"
+              aria-label="Minimizar"
+            >
+              _
+            </button>
+            <button
+              type="button"
+              class="btn"
+              data-action="close"
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="window-body">
+          <p class="field address">C:\home\projetos\</p>
+          <!-- Cada projeto novo vira um <li><a href="projects/slug/">…</a></li> aqui. -->
+          <ul class="field file-list">
+            <li class="empty">
+              Pasta vazia… o primeiro projeto está a caminho<span class="cursor"
+                >_</span
+              >
+            </li>
+          </ul>
+          <p class="statusbar"><span class="count">0</span> objeto(s)</p>
+        </div>
+      </section>
+
+      <section
+        class="window win-about"
+        id="win-about"
+        aria-labelledby="win-about-title"
+        hidden
+      >
+        <div class="titlebar">
+          <span class="titlebar-text" id="win-about-title"
+            >📝 sobre.txt - Bloco de notas</span
+          >
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn"
+              data-action="minimize"
+              aria-label="Minimizar"
+            >
+              _
+            </button>
+            <button
+              type="button"
+              class="btn"
+              data-action="close"
+              aria-label="Fechar"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="field">
+            <p>Oi! Eu sou o Vand Jr.</p>
+            <p>
+              Este site é um laboratório: cada projeto é pequeno, feito para
+              aprender um conceito de HTML, CSS ou JavaScript, e tem o código
+              comentado explicando o porquê de cada escolha.
+            </p>
+            <p>
+              Código no GitHub:
+              <a
+                href="https://github.com/VanderleiJr/home"
+                target="_blank"
+                rel="noopener"
+                >VanderleiJr/home</a
+              >
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="taskbar">
+      <button
+        type="button"
+        class="btn start-button"
+        aria-expanded="false"
+        aria-controls="start-menu"
+      >
+        🌴 Iniciar
+      </button>
+
+      <nav class="start-menu" id="start-menu" aria-label="Menu Iniciar" hidden>
+        <span class="start-side" aria-hidden="true">vand jr ✦ home</span>
+        <ul class="start-items">
+          <li>
+            <button type="button" data-open="win-welcome">💾 Bem-vindo</button>
+          </li>
+          <li>
+            <button type="button" data-open="win-projects">📁 Projetos</button>
+          </li>
+          <li><button type="button" data-open="win-about">📝 Sobre</button></li>
+          <li>
+            <a
+              href="https://github.com/VanderleiJr/home"
+              target="_blank"
+              rel="noopener"
+              >🌐 Código-fonte</a
+            >
+          </li>
+          <li class="separator" aria-hidden="true"></li>
+          <li><a href="en/" hreflang="en" lang="en">🇬🇧 English version</a></li>
+          <li>
+            <button type="button" data-action="close-all">
+              ⏻ Fechar janelas
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Botões das janelas abertas: criados pelo JavaScript. -->
+      <div class="tasks"></div>
+
+      <div class="tray">
+        <!-- Só aparece em telas de toque (o JS decide). -->
+        <button
+          type="button"
+          class="tray-btn gyro"
+          aria-pressed="false"
+          aria-label="Dirigir inclinando o celular"
+          title="Dirigir inclinando o celular"
+          data-unavailable="Giroscópio indisponível neste aparelho"
+          hidden
+        >
+          🎮
+        </button>
+        <a href="en/" hreflang="en" lang="en" title="English version">EN</a>
+        <time class="clock">--:--</time>
+      </div>
+    </footer>
   </body>
 </html>

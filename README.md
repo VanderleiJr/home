@@ -13,6 +13,7 @@ O código é aberto e foi escrito para ser lido: cada projeto traz comentários 
 ```
 site/                     ← única pasta publicada
 ├── index.html            página inicial (PT)
+├── assets/               CSS e JS da página inicial
 ├── projects/<projeto>/   cada projeto: HTML (PT) + CSS + JS
 └── en/                   versões em inglês, mesmo caminho
 ```
