@@ -28,12 +28,9 @@
 
   /*
     Hora do dia (o scene.js atualiza; estes são os valores sem JS):
-    --daylight: 1 = dia, 0 = noite; --sky-x: 0 a 1 da esquerda para a
-    direita; --sky-rise: 0 no horizonte, 1 no ponto mais alto.
+    --daylight: 1 = dia, 0 = noite.
   */
   --daylight: 1;
-  --sky-x: 0.5;
-  --sky-rise: 0;
   /*
     color-mix mistura duas cores numa proporção: com --daylight, cada
     cor do cenário desliza continuamente entre a versão de dia e a de noite.
@@ -89,24 +86,15 @@
 }
 
 /*
-  Sol e lua percorrem o mesmo arco. A posição sai das variáveis do
-  scene.js, e clamp() segura o astro dentro da tela: nas pontas do arco
-  ele encosta na margem em vez de sair. No horizonte (--sky-rise: 0)
-  fica meio afundado atrás do chão, como no pôr do sol clássico.
+  Sol e lua ocupam o mesmo lugar: centrados e meio afundados atrás do
+  chão, como no pôr do sol clássico. Só um aparece por vez (veja abaixo).
 */
 .sun,
 .moon {
   --size: min(44vmin, 340px);
   position: absolute;
-  left: clamp(
-    var(--size) / 2 + 8px,
-    10% + 80% * var(--sky-x),
-    100% - var(--size) / 2 - 8px
-  );
-  /* Altura máxima: o topo do astro para 24px antes do alto da tela. */
-  bottom: calc(
-    42vh + var(--sky-rise) * max(0px, 58vh - 0.7 * var(--size) - 24px)
-  );
+  left: 50%;
+  bottom: 42vh;
   width: var(--size);
   aspect-ratio: 1;
   transform: translate(-50%, 30%);
@@ -145,13 +133,22 @@
 }
 
 /*
-  A lua: menor, fria (lilás e ciano) e em quarto crescente. O brilho
-  vem do filter no elemento, e o desenho fica no ::before — se a máscara
-  ficasse no próprio .moon, ela recortaria o brilho junto.
+  A lua: do tamanho do sol, fria (lilás e ciano) e em quarto crescente.
+  O desenho fica no ::before e o halo no ::after — se a máscara ficasse
+  no próprio .moon, ela recortaria o halo junto.
 */
-.moon {
-  --size: min(30vmin, 220px);
-  filter: drop-shadow(0 0 18px var(--cyan)) drop-shadow(0 0 40px var(--purple));
+.moon::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  /* z-index negativo: o halo fica atrás do desenho da lua. */
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgb(1 205 254 / 0.35),
+    rgb(185 103 255 / 0.18) 60%,
+    transparent
+  );
 }
 
 .moon::before {
@@ -165,29 +162,13 @@
     var(--purple) 100%
   );
   /*
-    Três máscaras combinadas com mask-composite: intersect (só fica o que
-    todas deixam ver): o disco da lua, um círculo deslocado que "morde"
-    o disco e forma o crescente, e as mesmas faixas do sol. O disco é
-    máscara, e não border-radius, porque a borda arredondada "vazava"
-    1px dentro da mordida.
+    A forma vem de uma máscara SVG embutida na URL: dentro de um
+    <mask>, o branco mostra e o preto esconde. O disco branco menos um
+    círculo preto deslocado forma o crescente, e os retângulos repetem
+    as faixas do sol. Uma imagem só: combinar várias máscaras CSS
+    deixava aparecer a borda da caixa.
   */
-  mask:
-    radial-gradient(closest-side, #000 calc(100% - 1px), transparent),
-    radial-gradient(
-      circle at 75% 30%,
-      transparent calc(var(--size) * 0.42),
-      #000 calc(var(--size) * 0.42 + 1px)
-    ),
-    linear-gradient(
-      #000 0 55%,
-      transparent 55% 60%,
-      #000 60% 70%,
-      transparent 70% 76%,
-      #000 76% 85%,
-      transparent 85% 92%,
-      #000 92%
-    );
-  mask-composite: intersect;
+  mask: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><mask id='m'><circle cx='50' cy='50' r='50' fill='white'/><circle cx='75' cy='30' r='42' fill='black'/></mask><g mask='url(%23m)'><rect width='100' height='55'/><rect y='60' width='100' height='10'/><rect y='76' width='100' height='9'/><rect y='92' width='100' height='8'/></g></svg>");
 }
 
 /*

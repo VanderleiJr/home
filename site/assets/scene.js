@@ -44,10 +44,9 @@
 }
 
 /*
-  Céu pela hora do dia: o sol (6h–18h) e a lua (18h–6h) atravessam a
-  tela num arco, da esquerda (nascente) para a direita (poente).
-  O JS só calcula números de 0 a 1 e os entrega ao CSS em variáveis;
-  posição, cores e brilho ficam no scene.css. Como tudo vem do relógio,
+  Céu pela hora do dia: sol das 6h às 18h, lua das 18h às 6h, sempre
+  no mesmo lugar. O JS só calcula a luz do dia (0 a 1) e a entrega ao
+  CSS numa variável; cores e brilho ficam no scene.css. Como tudo vem do relógio,
   todas as páginas mostram exatamente o mesmo céu.
 
   Para testar outro horário: ?hora=21:30 na URL.
@@ -66,10 +65,10 @@
   function updateSky() {
     const minutes = minutesNow();
     const isDay = minutes >= 360 && minutes < 1080; // das 6h às 18h
-    // Progresso no arco (0 = nascendo, 1 = se pondo): 12 h para cada astro.
+    // Progresso do período (0 = começo, 1 = fim): 12 h de dia, 12 h de noite.
     const start = isDay ? 360 : 1080;
     const progress = ((minutes - start + 1440) % 1440) / 720;
-    // Seno: 0 nas pontas e 1 no meio — o astro sobe e desce numa curva suave.
+    // Seno: 0 nas pontas e 1 no meio — uma "altura" imaginária do astro.
     const rise = Math.sin(Math.PI * progress);
     /*
       Luz do dia, de 0 (noite) a 1 (dia). Em vez de virar de uma vez às
@@ -80,13 +79,11 @@
     const daylight = Math.min(1, Math.max(0, (height + 0.15) / 0.3));
 
     const set = (name, value) => root.style.setProperty(name, value.toFixed(4));
-    set("--sky-x", progress);
-    set("--sky-rise", rise);
     set("--daylight", daylight);
     root.classList.toggle("is-night", !isDay);
   }
 
   updateSky();
-  // Uma vez por minuto basta: o arco inteiro leva 12 horas.
+  // Uma vez por minuto basta: o crepúsculo dura cerca de 1 hora.
   if (!forced) setInterval(updateSky, 60_000);
 }
