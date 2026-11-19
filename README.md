@@ -36,4 +36,6 @@ npm run lint     # valida o HTML (html-validate)
 npm run format   # formata com Prettier
 ```
 
+O céu segue a hora local (sol de dia, lua e faróis à noite); para ver outro horário, use `?hora=21:30` na URL.
+
 O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`.

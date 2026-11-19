@@ -1,6 +1,7 @@
 /*
   Base compartilhada entre a página inicial e todos os projetos:
-  o cenário (céu, sol e chão quadriculado) e o seletor de idiomas.
+  o cenário (céu com sol ou lua conforme a hora, chão quadriculado)
+  e o seletor de idiomas.
   Um único arquivo garante que o fundo seja idêntico em todas as
   páginas: ao navegar, nada "pula" de lugar.
   Carregue antes do CSS da página, junto com scene.js e i18n.js.
@@ -24,6 +25,24 @@
   /* Velocidade da estrada: anda uma casa da grade (--grid) a cada --loop. */
   --grid: 48px;
   --loop: 1.6s;
+
+  /*
+    Hora do dia (o scene.js atualiza; estes são os valores sem JS):
+    --daylight: 1 = dia, 0 = noite; --sky-x: 0 a 1 da esquerda para a
+    direita; --sky-rise: 0 no horizonte, 1 no ponto mais alto.
+  */
+  --daylight: 1;
+  --sky-x: 0.5;
+  --sky-rise: 0;
+  /*
+    color-mix mistura duas cores numa proporção: com --daylight, cada
+    cor do cenário desliza continuamente entre a versão de dia e a de noite.
+  */
+  --day: calc(var(--daylight) * 100%);
+  --sky-top: color-mix(in oklab, var(--night) var(--day), #030008);
+  --sky-mid: color-mix(in oklab, #3d0066 var(--day), #0e0024);
+  --sky-low: color-mix(in oklab, var(--pink) var(--day), #3a0a55);
+  --grid-line: color-mix(in oklab, var(--pink) var(--day), #7a2a8a);
 }
 
 /*
@@ -44,12 +63,63 @@
   inset: 0;
   z-index: -1;
   overflow: hidden;
+  background: linear-gradient(
+    var(--sky-top),
+    var(--sky-mid) 45%,
+    var(--sky-low) 100%
+  );
+}
+
+/* Estrelas: uma camada própria, para ficarem mais fortes à noite. */
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 42vh;
+  opacity: calc(1 - var(--daylight) * 0.6);
   background:
     radial-gradient(1px 1px at 20% 15%, #fff 50%, transparent 51%),
     radial-gradient(1px 1px at 70% 8%, #fff 50%, transparent 51%),
     radial-gradient(1.5px 1.5px at 85% 25%, #fff 50%, transparent 51%),
     radial-gradient(1px 1px at 40% 30%, #fff 50%, transparent 51%),
-    linear-gradient(var(--night), #3d0066 45%, #ff71ce 100%);
+    radial-gradient(1px 1px at 8% 40%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 55% 20%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 55%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 30% 60%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 45%, #fff 50%, transparent 51%);
+}
+
+/*
+  Sol e lua percorrem o mesmo arco. A posição sai das variáveis do
+  scene.js, e clamp() segura o astro dentro da tela: nas pontas do arco
+  ele encosta na margem em vez de sair. No horizonte (--sky-rise: 0)
+  fica meio afundado atrás do chão, como no pôr do sol clássico.
+*/
+.sun,
+.moon {
+  --size: min(44vmin, 340px);
+  position: absolute;
+  left: clamp(
+    var(--size) / 2 + 8px,
+    10% + 80% * var(--sky-x),
+    100% - var(--size) / 2 - 8px
+  );
+  /* Altura máxima: o topo do astro para 24px antes do alto da tela. */
+  bottom: calc(
+    42vh + var(--sky-rise) * max(0px, 58vh - 0.7 * var(--size) - 24px)
+  );
+  width: var(--size);
+  aspect-ratio: 1;
+  transform: translate(-50%, 30%);
+}
+
+/* De dia só o sol; à noite só a lua (classe is-night, posta pelo scene.js). */
+.is-night .sun,
+.moon {
+  display: none;
+}
+
+.is-night .moon {
+  display: block;
 }
 
 /*
@@ -58,13 +128,7 @@
   o sol some — isso cria as faixas horizontais na metade de baixo.
 */
 .sun {
-  position: absolute;
-  left: 50%;
-  bottom: 42vh;
-  width: min(44vmin, 340px);
-  aspect-ratio: 1;
   border-radius: 50%;
-  transform: translate(-50%, 30%);
   background: linear-gradient(var(--yellow), var(--pink) 75%);
   box-shadow: 0 0 60px var(--pink);
   mask: linear-gradient(
@@ -81,6 +145,52 @@
 }
 
 /*
+  A lua: menor, fria (lilás e ciano) e em quarto crescente. O brilho
+  vem do filter no elemento, e o desenho fica no ::before — se a máscara
+  ficasse no próprio .moon, ela recortaria o brilho junto.
+*/
+.moon {
+  --size: min(30vmin, 220px);
+  filter: drop-shadow(0 0 18px var(--cyan)) drop-shadow(0 0 40px var(--purple));
+}
+
+.moon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 35% 35%,
+    #fff,
+    #d9c8ff 40%,
+    var(--purple) 100%
+  );
+  /*
+    Três máscaras combinadas com mask-composite: intersect (só fica o que
+    todas deixam ver): o disco da lua, um círculo deslocado que "morde"
+    o disco e forma o crescente, e as mesmas faixas do sol. O disco é
+    máscara, e não border-radius, porque a borda arredondada "vazava"
+    1px dentro da mordida.
+  */
+  mask:
+    radial-gradient(closest-side, #000 calc(100% - 1px), transparent),
+    radial-gradient(
+      circle at 75% 30%,
+      transparent calc(var(--size) * 0.42),
+      #000 calc(var(--size) * 0.42 + 1px)
+    ),
+    linear-gradient(
+      #000 0 55%,
+      transparent 55% 60%,
+      #000 60% 70%,
+      transparent 70% 76%,
+      #000 76% 85%,
+      transparent 85% 92%,
+      #000 92%
+    );
+  mask-composite: intersect;
+}
+
+/*
   O chão: uma grade desenhada com dois gradientes lineares (linhas
   horizontais + verticais) e "deitada" com perspective + rotateX.
   A animação move o fundo e dá a sensação de viajar para frente.
@@ -93,9 +203,12 @@
   /* Ponto de fuga no horizonte (topo do chão), onde as linhas se encontram. */
   perspective-origin: 50% 0;
   overflow: hidden;
-  background: linear-gradient(#2b0045, #0d001a);
-  border-top: 2px solid var(--pink);
-  box-shadow: 0 -4px 24px var(--pink);
+  background: linear-gradient(
+    color-mix(in oklab, #2b0045 var(--day), #0c0018),
+    color-mix(in oklab, #0d001a var(--day), #030006)
+  );
+  border-top: 2px solid var(--grid-line);
+  box-shadow: 0 -4px 24px var(--grid-line);
 }
 
 .plane {
@@ -107,8 +220,8 @@
   */
   inset: 0 -100%;
   background-image:
-    linear-gradient(var(--pink) 2px, transparent 2px),
-    linear-gradient(90deg, var(--pink) 2px, transparent 2px);
+    linear-gradient(var(--grid-line) 2px, transparent 2px),
+    linear-gradient(90deg, var(--grid-line) 2px, transparent 2px);
   background-size: var(--grid) var(--grid);
   transform: rotateX(var(--floor-tilt));
   transform-origin: top center;

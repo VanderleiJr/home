@@ -359,7 +359,8 @@ const MODEL = [
       ],
     ],
   ], // teto
-  ["car-line", [back(0.22, 0.3, 0.42), lamp, mirror(lamp)]], // placa e faróis escamoteáveis
+  ["car-line", [back(0.22, 0.3, 0.42)]], // placa
+  ["car-lamp", [lamp, mirror(lamp)]], // faróis escamoteáveis
   ["car-light", [back(0.84, 0.5, 0.62)]], // lanterna em faixa
   [
     "car-body",
@@ -425,6 +426,52 @@ function renderTrails() {
   });
   // O gradiente começa opaco nas rodas e some na borda de baixo do chão.
   trailFade.setAttribute("y1", toScreen(0, state.d).sy.toFixed(1));
+}
+
+/* ---------- Faróis (só aparecem à noite) ---------- */
+
+/*
+  Cada farol projeta um "leque" de luz no chão, à frente do carro: um
+  trapézio no plano da estrada (altura 0), estreito no farol e largo
+  longe dele. O gradiente vai de luz forte a transparente; o CSS liga
+  e desliga tudo com --daylight (veja .car-beam no home.css).
+  Ele vem logo depois do rastro: a carroceria é pintada por cima.
+*/
+const beamGroup = document.createElementNS(SVG_NS, "g");
+beamGroup.setAttribute("class", "car-beam");
+beamGroup.innerHTML = `
+  <defs>
+    <linearGradient id="beam-fade" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fffbd6" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#fffbd6" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <polygon /><polygon />`;
+trailGroup.after(beamGroup);
+const beams = beamGroup.querySelectorAll("polygon");
+const LAMPS = [-0.55, 0.55]; // centro lateral de cada farol (m)
+
+function renderBeams() {
+  // Alcance em metros do carro, sem passar do horizonte (d = 0).
+  const reach = clamp((state.d - 6) / (DEPTH * view.k) - LENGTH, 0, 14);
+  LAMPS.forEach((center, i) => {
+    const corners = [
+      [center - 0.2, LENGTH],
+      [center + 0.2, LENGTH],
+      [center + 1.2, LENGTH + reach],
+      [center - 1.2, LENGTH + reach],
+    ];
+    beams[i].setAttribute(
+      "points",
+      corners
+        .map(([lx, f]) => {
+          const { x, d } = onRoad(lx, f);
+          const p = toScreen(x, d);
+          return `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`;
+        })
+        .join(" "),
+    );
+  });
 }
 
 const groups = MODEL.map(([cls, faces]) => {
@@ -589,6 +636,7 @@ function drive(now) {
 
   updateTrails(dt);
   renderTrails();
+  renderBeams();
   render();
   requestAnimationFrame(drive);
 }

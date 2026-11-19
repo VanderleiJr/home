@@ -144,9 +144,34 @@ a {
   stroke-width: 1.5;
 }
 
+/*
+  Luzes: --night-on vai de 0 (dia) a 1 (noite) junto com o céu, então
+  faróis e lanternas acendem aos poucos no crepúsculo.
+*/
+.car {
+  --night-on: calc(1 - var(--daylight));
+}
+
 .car-light {
   fill: #ff2a6d;
   stroke: var(--pink);
+  /* À noite a lanterna ganha um halo vermelho. */
+  filter: drop-shadow(0 0 calc(var(--night-on) * 10px) #ff2a6d);
+}
+
+.car-lamp {
+  fill: color-mix(in oklab, #fffbd6 calc(var(--night-on) * 100%), transparent);
+  stroke: var(--cyan);
+  stroke-width: 1.5;
+}
+
+/* O leque de luz no chão. */
+.car-beam {
+  opacity: var(--night-on);
+}
+
+.car-beam polygon {
+  fill: url(#beam-fade);
 }
 
 .car-wheel {
