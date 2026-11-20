@@ -25,7 +25,8 @@
       "address": "C:\\home\\projetos\\",
       "kana": "🎴 kana.exe — aprenda hiragana e katakana",
       "objects": "objeto(s)",
-      "libras": "🤟 libras.exe — aprenda o alfabeto manual de Libras"
+      "libras": "🤟 libras.exe — aprenda o alfabeto manual de Libras",
+      "dnd": "🐉 d&d.exe — crie seu personagem de D&D 2024"
     },
     "about": {
       "title": "📝 sobre.txt - Bloco de notas",
@@ -190,5 +191,31 @@
     "showBody": "🧍 Ver o corpo",
     "showHand": "🔍 Ver a mão",
     "noWebgl": "Seu navegador não tem WebGL: não dá para mostrar o personagem 3D."
+  },
+  "dnd": {
+    "description": "Criador de personagem de D&D 2024 que lê o seu próprio PDF do Livro do Jogador, direto no navegador. HTML, CSS e JavaScript puro.",
+    "close": "Fechar e voltar à página inicial",
+    "back": "Voltar à página inicial",
+    "intro": "Crie seu personagem de D&D 2024 a partir do seu Livro do Jogador em PDF.",
+    "drop": "Clique para escolher o PDF ou arraste-o até aqui",
+    "privacy": "🔒 O arquivo é lido só no seu navegador: nada é enviado para a internet.",
+    "noBook": "📭 Nenhum livro carregado",
+    "notPdf": "⚠️ Esse arquivo não é um PDF.",
+    "received": "📖 {name} ({size}) recebido",
+    "wizard": "Criador de personagem",
+    "steps": "Etapas",
+    "step": {
+      "class": "Classe",
+      "origin": "Origem",
+      "abilities": "Atributos",
+      "level": "Nível",
+      "spells": "Magias",
+      "equipment": "Equipamento",
+      "details": "Detalhes",
+      "sheet": "Ficha"
+    },
+    "waiting": "⏳ Carregue o livro para começar.",
+    "home": "🌴 Início",
+    "saved": "Dados salvos só neste navegador"
   }
 }

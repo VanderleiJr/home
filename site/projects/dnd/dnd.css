@@ -1,0 +1,83 @@
+/*
+  Estilo do d&d.exe. O visual Windows 98 vem do assets/win98.css e o
+  cenário do assets/scene.css; aqui fica só o que é deste criador.
+*/
+
+/* ---------- Janelas: largura de cada uma no fluxo da página ---------- */
+
+.win-book {
+  flex: 0 1 360px;
+}
+
+.win-wizard {
+  flex: 0 1 640px;
+}
+
+/*
+  Esconde só dos olhos: o input continua no documento, focável pelo
+  teclado e lido pelos leitores de tela. display:none tiraria tudo isso.
+*/
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Área de soltar o PDF ---------- */
+
+.dropzone {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  /* Borda tracejada: o convite clássico para "solte aqui". */
+  outline: 2px dashed #808080;
+  outline-offset: -8px;
+}
+
+.dropzone-icon {
+  font-size: 2.5rem;
+}
+
+/* .is-dragging é ligada pelo JS enquanto há um arquivo por cima. */
+.dropzone.is-dragging {
+  outline-color: #000080;
+  background: #dfe8ff;
+}
+
+/* O input escondido ainda recebe foco: o anel aparece na label inteira. */
+.dropzone:focus-within {
+  outline-style: solid;
+  outline-color: #000080;
+}
+
+.privacy {
+  font-size: 0.85rem;
+}
+
+/* ---------- Assistente ---------- */
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+/* Botões de um <fieldset disabled> herdam o estado: ficam acinzentados. */
+.wizard:disabled .btn {
+  color: #808080;
+  text-shadow: 1px 1px #fff;
+}
+
+.empty {
+  padding: 24px 12px;
+  text-align: center;
+}

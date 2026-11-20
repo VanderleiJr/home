@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>d&amp;d.exe ✦ Vand Jr</title>
+    <meta
+      name="description"
+      content="Criador de personagem de D&amp;D 2024 que lê o seu próprio PDF do Livro do Jogador, direto no navegador. HTML, CSS e JavaScript puro."
+      data-i18n-attr="content:dnd.description"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐉</text></svg>"
+    />
+    <!-- Cenário e tradução compartilhados com todas as páginas. -->
+    <link rel="stylesheet" href="../../assets/scene.css" />
+    <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
+    <script src="../../assets/scene.js"></script>
+    <script src="../../assets/i18n.js"></script>
+    <!-- Visual Win98 compartilhado (janelas, botões, barra de tarefas). -->
+    <link rel="stylesheet" href="../../assets/win98.css" />
+    <link rel="stylesheet" href="dnd.css" />
+    <!-- Arrastar, minimizar e relógio: comportamento compartilhado das janelas. -->
+    <script src="../../assets/desktop.js" defer></script>
+    <script src="dnd.js" defer></script>
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="moon"></div>
+      <div class="floor"><div class="plane"></div></div>
+    </div>
+
+    <!--
+      Nenhum texto do livro mora aqui: a página é só o "motor". O conteúdo
+      (classes, magias…) vem do PDF que você escolhe, lido no seu navegador.
+    -->
+    <main class="desktop desktop-flow">
+      <section class="window win-book" aria-labelledby="book-title">
+        <div class="titlebar">
+          <h1 class="titlebar-text" id="book-title">🐉 d&amp;d.exe</h1>
+          <div class="titlebar-controls">
+            <!-- O "fechar" é um link: sai do criador e volta para a página inicial. -->
+            <a
+              class="btn btn-close"
+              href="../../"
+              aria-label="Fechar e voltar à página inicial"
+              title="Voltar à página inicial"
+              data-i18n-attr="aria-label:dnd.close, title:dnd.back"
+            ></a>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <p data-i18n="dnd.intro">
+            Crie seu personagem de D&amp;D 2024 a partir do seu Livro do Jogador
+            em PDF.
+          </p>
+
+          <!--
+            A <label> inteira é a área de soltar: clicar nela abre o seletor
+            do <input type="file"> (que fica escondido), e o JS só cuida do
+            arrastar e soltar. accept filtra o seletor para PDFs.
+          -->
+          <label class="field dropzone">
+            <input
+              class="visually-hidden"
+              type="file"
+              accept="application/pdf,.pdf"
+              data-book-input
+            />
+            <span class="dropzone-icon" aria-hidden="true">📕</span>
+            <span data-i18n="dnd.drop"
+              >Clique para escolher o PDF ou arraste-o até aqui</span
+            >
+          </label>
+
+          <p class="privacy" data-i18n="dnd.privacy">
+            🔒 O arquivo é lido só no seu navegador: nada é enviado para a
+            internet.
+          </p>
+
+          <!-- role="status": leitores de tela anunciam cada mudança deste texto. -->
+          <p class="statusbar" role="status" data-book-status>
+            <span data-i18n="dnd.noBook">📭 Nenhum livro carregado</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="window win-wizard" aria-labelledby="wizard-title">
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="wizard-title">
+            🧙 <span data-i18n="dnd.wizard">Criador de personagem</span>
+          </h2>
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn btn-minimize"
+              data-action="minimize"
+              aria-label="Minimizar"
+              data-i18n-attr="aria-label:common.minimize"
+            ></button>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <!--
+            <fieldset disabled> desabilita de uma vez todos os controles de
+            dentro dele: enquanto não houver livro, nada pode ser escolhido.
+          -->
+          <fieldset class="wizard" disabled data-wizard>
+            <legend data-i18n="dnd.steps">Etapas</legend>
+            <ol class="steps">
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.class">
+                  Classe
+                </button>
+              </li>
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.origin">
+                  Origem
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-i18n="dnd.step.abilities"
+                >
+                  Atributos
+                </button>
+              </li>
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.level">
+                  Nível
+                </button>
+              </li>
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.spells">
+                  Magias
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-i18n="dnd.step.equipment"
+                >
+                  Equipamento
+                </button>
+              </li>
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.details">
+                  Detalhes
+                </button>
+              </li>
+              <li>
+                <button type="button" class="btn" data-i18n="dnd.step.sheet">
+                  Ficha
+                </button>
+              </li>
+            </ol>
+            <p class="field empty" data-i18n="dnd.waiting">
+              ⏳ Carregue o livro para começar.
+            </p>
+          </fieldset>
+        </div>
+      </section>
+    </main>
+
+    <footer class="taskbar">
+      <a class="btn start-button" href="../../" data-i18n="dnd.home"
+        >🌴 Início</a
+      >
+      <!-- Um botão por janela minimizável, criado pelo assets/desktop.js. -->
+      <div class="tasks"></div>
+      <span class="taskbar-hint" data-i18n="dnd.saved"
+        >Dados salvos só neste navegador</span
+      >
+      <div class="tray">
+        <select
+          class="lang-select"
+          aria-label="Idioma"
+          data-lang-select
+          data-i18n-attr="aria-label:common.language"
+        >
+          <option value="pt-BR" lang="pt-BR">Português</option>
+        </select>
+        <!-- Relógio da bandeja, preenchido pelo assets/desktop.js. -->
+        <time class="clock">--:--</time>
+      </div>
+    </footer>
+  </body>
+</html>

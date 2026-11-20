@@ -40,4 +40,5 @@ When compacting, keep structure decisions, files changed and pending items; drop
 ## Git
 
 - Commits em português, com gitmoji (https://gitmoji.dev/) em unicode: `🎉 Estrutura inicial do site`. Assunto curto (~50 caracteres); detalhes no corpo.
+- Cada página nova é feita numa branch `feature/<slug>` (ex.: `feature/dnd`); só entra na `main` (que publica) quando estiver pronta.
 - Última linha: `Co-Authored-By: 🤖 Claude <modelo> <noreply@anthropic.com>`.

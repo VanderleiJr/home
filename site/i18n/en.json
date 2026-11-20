@@ -25,7 +25,8 @@
       "address": "C:\\home\\projects\\",
       "kana": "🎴 kana.exe — learn hiragana and katakana",
       "objects": "object(s)",
-      "libras": "🤟 libras.exe — learn the Libras manual alphabet"
+      "libras": "🤟 libras.exe — learn the Libras manual alphabet",
+      "dnd": "🐉 d&d.exe — build your D&D 2024 character"
     },
     "about": {
       "title": "📝 about.txt - Notepad",
@@ -190,5 +191,31 @@
     "showBody": "🧍 Show the body",
     "showHand": "🔍 Show the hand",
     "noWebgl": "Your browser has no WebGL: the 3D character cannot be shown."
+  },
+  "dnd": {
+    "description": "D&D 2024 character builder that reads your own Player’s Handbook PDF, right in the browser. Plain HTML, CSS and JavaScript.",
+    "close": "Close and go back to the home page",
+    "back": "Back to the home page",
+    "intro": "Build your D&D 2024 character from your Player’s Handbook PDF.",
+    "drop": "Click to choose the PDF or drag it here",
+    "privacy": "🔒 The file is read only in your browser: nothing is sent to the internet.",
+    "noBook": "📭 No book loaded",
+    "notPdf": "⚠️ That file is not a PDF.",
+    "received": "📖 {name} ({size}) received",
+    "wizard": "Character builder",
+    "steps": "Steps",
+    "step": {
+      "class": "Class",
+      "origin": "Origin",
+      "abilities": "Abilities",
+      "level": "Level",
+      "spells": "Spells",
+      "equipment": "Equipment",
+      "details": "Details",
+      "sheet": "Sheet"
+    },
+    "waiting": "⏳ Load the book to begin.",
+    "home": "🌴 Start",
+    "saved": "Data saved only in this browser"
   }
 }

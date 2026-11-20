@@ -43,4 +43,4 @@ O céu segue a hora local (sol de dia; lua, céu escuro e faróis à noite); par
 
 Os sinais do libras.exe vêm do dicionário público do [VLibras](https://www.vlibras.gov.br/) (suíte do Governo Federal, software livre sob LGPL-3.0): `tools/vlibras/` lê os pacotes do Unity, calcula a posição dos ossos e reescreve a tabela de `signs.js`.
 
-O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`.
+O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`. Cada página nova nasce numa branch `feature/<slug>` e só é mesclada na `main` quando está pronta.
