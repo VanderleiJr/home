@@ -28,6 +28,8 @@
     <!-- Ferramentas genéricas de extração + uma "fonte" por livro suportado. -->
     <script src="extract.js" defer></script>
     <script src="sources/phb2024.js" defer></script>
+    <!-- Cache dos dados extraídos (IndexedDB), para não reler o PDF. -->
+    <script src="store.js" defer></script>
     <script src="dnd.js" defer></script>
   </head>
   <body>
@@ -92,6 +94,18 @@
           </p>
           <!-- <progress> nativo: o win98.css não precisa de nada para mostrá-lo. -->
           <progress class="progress" hidden data-book-progress></progress>
+
+          <!--
+            Livros já lidos ficam guardados no IndexedDB deste navegador
+            (store.js): na próxima visita a página abre sem pedir o PDF.
+            Um item por livro, cada um com o seu botão de esquecer.
+          -->
+          <section class="books" hidden data-books>
+            <h2 class="books-title" data-i18n="dnd.books">
+              📚 Livros guardados neste navegador
+            </h2>
+            <ul class="field books-list" data-books-list></ul>
+          </section>
 
           <!-- Mapa do livro: capítulos e seções que o extrator reconheceu. -->
           <details class="book-map" hidden data-book-map>

@@ -217,7 +217,7 @@
     "home": "🌴 Início",
     "saved": "Dados salvos só neste navegador",
     "reading": "⏳ Lendo {name}…",
-    "opened": "📖 {name} ({size}): {pages} páginas em {ms} ms · {classes} classes, {subclasses} subclasses",
+    "opened": "📖 {name} ({size}): {pages} páginas em {ms} ms · {summary}",
     "readError": "⚠️ Não consegui ler o PDF: {error}",
     "preview": "🔎 Ver o texto extraído",
     "page": "Página",
@@ -226,6 +226,14 @@
     "map": "🗺 Mapa do livro",
     "classesTitle": "📜 Classes extraídas do livro",
     "features": "Características",
-    "subclasses": "Subclasses"
+    "subclasses": "Subclasses",
+    "summary": "{classes} classes, {species} espécies, {backgrounds} antecedentes, {feats} talentos, {spells} magias",
+    "cached": "📚 {name}, guardado neste navegador em {date} · {summary}",
+    "books": "📚 Livros guardados neste navegador",
+    "forget": "🗑 Esquecer",
+    "forgetHint": "Apaga deste navegador os dados extraídos de {name}",
+    "forgotten": "🗑 {name} esquecido: os dados foram apagados deste navegador.",
+    "outdated": "🔄 O leitor mudou desde que {name} foi guardado: carregue o PDF de novo.",
+    "noStore": "⚠️ Não deu para guardar neste navegador ({error}): os dados valem até fechar a página."
   }
 }

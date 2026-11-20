@@ -533,5 +533,43 @@
     return entries;
   };
 
+  /*
+    Junta os dados de vários livros num só conjunto, que é o que o
+    criador usa. Listas são somadas (cada item já traz o seu "source");
+    item com o mesmo id de outro livro substitui o anterior (uma errata
+    ou edição nova). Subclasse de uma expansão sem a classe no próprio
+    livro ("class": "mago") entra na classe da base com esse id.
+  */
+  DND.merge = (datasets) => {
+    const out = { equipment: {} };
+    const add = (list, items) => {
+      for (const item of items || []) {
+        const k =
+          item.id == null ? -1 : list.findIndex((x) => x.id === item.id);
+        if (k >= 0) list[k] = item;
+        else list.push(item);
+      }
+      return list;
+    };
+    for (const data of datasets) {
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "equipment" && value)
+          for (const [k, v] of Object.entries(value))
+            out.equipment[k] = Array.isArray(v)
+              ? add(out.equipment[k] || [], v)
+              : { ...out.equipment[k], ...v };
+        else if (key === "subclasses")
+          continue; // tratado abaixo
+        else if (Array.isArray(value)) out[key] = add(out[key] || [], value);
+      }
+    }
+    for (const data of datasets)
+      for (const sub of data.subclasses || []) {
+        const cls = out.classes?.find((c) => c.id === sub.class);
+        if (cls) add(cls.subclasses, [sub]);
+      }
+    return out;
+  };
+
   if (typeof module === "object" && module.exports) module.exports = DND;
 })(globalThis);

@@ -1,7 +1,8 @@
 /*
   d&d.exe — recebe o PDF (clicando ou arrastando), abre com o leitor
-  próprio (pdf.js), reconhece a versão do livro pelo hash e monta o
-  mapa do livro com a fonte correspondente (sources/*.js).
+  próprio (pdf.js), reconhece a versão do livro pelo hash, extrai os
+  dados com a fonte correspondente (sources/*.js) e guarda o resultado
+  no navegador (store.js). Na visita seguinte, abre direto do cache.
 */
 
 const input = document.querySelector("[data-book-input]");
@@ -15,7 +16,11 @@ const bookMap = document.querySelector("[data-book-map]");
 const bookTree = document.querySelector("[data-book-tree]");
 const classesBox = document.querySelector("[data-classes]");
 const classList = document.querySelector("[data-class-list]");
+const booksBox = document.querySelector("[data-books]");
+const booksList = document.querySelector("[data-books-list]");
 let doc = null;
+// Livros carregados: id da fonte → registro { source, name, savedAt, data }.
+const loaded = new Map();
 
 // Intl.NumberFormat com unit: "36,7 MB" formatado no idioma da página.
 function formatSize(bytes) {
@@ -25,6 +30,16 @@ function formatSize(bytes) {
     maximumFractionDigits: 1,
   }).format(bytes / 1e6);
 }
+
+// Resumo do que foi extraído, para a barra de status.
+const summary = (data) =>
+  i18n.t("dnd.summary", {
+    classes: data.classes.length,
+    species: data.species.length,
+    backgrounds: data.backgrounds.length,
+    feats: data.feats.length,
+    spells: data.spells.length,
+  });
 
 async function receive(file) {
   await i18n.ready;
@@ -58,26 +73,136 @@ async function receive(file) {
         total: doc.pageCount,
       });
     });
-    const data = source.extract(book);
+    const record = {
+      source: source.id,
+      name: source.name,
+      version: source.version,
+      savedAt: Date.now(),
+      data: source.extract(book),
+    };
     progress.hidden = true;
     status.textContent = i18n.t("dnd.opened", {
       name: source.name,
       size: formatSize(file.size),
       pages: doc.pageCount,
       ms: Math.round(performance.now() - started),
-      classes: data.classes.length,
-      subclasses: data.classes.reduce((n, c) => n + c.subclasses.length, 0),
+      summary: summary(record.data),
     });
-    showMap(data.outline);
-    showClasses(data.classes);
+    loaded.set(record.source, record);
+    render();
     previewPage.max = doc.pageCount;
     preview.hidden = false;
     showPage();
+    /*
+      Guardar pode falhar (aba anônima, cota cheia): o livro continua
+      valendo nesta visita, só não fica para a próxima.
+    */
+    try {
+      await Store.save(record);
+    } catch (error) {
+      status.textContent +=
+        " · " + i18n.t("dnd.noStore", { error: error.message });
+    }
   } catch (error) {
     console.error(error);
     progress.hidden = true;
     status.textContent = i18n.t("dnd.readError", { error: error.message });
   }
+}
+
+// Redesenha tudo a partir dos livros carregados (zero, um ou vários).
+function render() {
+  const records = [...loaded.values()];
+  showBooks(records);
+  const empty = records.length === 0;
+  document.querySelector("[data-waiting]").hidden = !empty;
+  classesBox.hidden = empty;
+  bookMap.hidden = empty;
+  if (empty) {
+    preview.hidden = true;
+    return;
+  }
+  const data = DND.merge(records.map((r) => r.data));
+  showClasses(data.classes);
+  // O mapa é de um livro só: mostra o do último carregado.
+  showMap(records.at(-1).data.outline);
+}
+
+// Data e hora curtas ("20/11/2026, 19:21") no idioma da página.
+const dateFormat = () =>
+  new Intl.DateTimeFormat(document.documentElement.lang, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+// Lista dos livros guardados, cada um com o botão de esquecer.
+function showBooks(records) {
+  const date = dateFormat();
+  booksList.replaceChildren(
+    ...records.map((r) =>
+      el(
+        "li",
+        { className: "book" },
+        el("span", {}, `${r.name} · ${date.format(r.savedAt)}`),
+        el(
+          "button",
+          {
+            type: "button",
+            className: "btn",
+            title: i18n.t("dnd.forgetHint", { name: r.name }),
+            onclick: () => forget(r),
+          },
+          i18n.t("dnd.forget"),
+        ),
+      ),
+    ),
+  );
+  booksBox.hidden = records.length === 0;
+}
+
+async function forget(record) {
+  try {
+    await Store.forget(record.source);
+  } catch (error) {
+    console.error(error); // sem banco, não havia nada guardado
+  }
+  loaded.delete(record.source);
+  doc = null;
+  render();
+  status.textContent = i18n.t("dnd.forgotten", { name: record.name });
+}
+
+/*
+  Ao abrir a página: recupera o que já foi lido antes. Só vale o
+  registro cuja fonte ainda existe e cuja versão do extrator é a
+  atual; um registro velho é apagado e o livro precisa ser relido.
+*/
+async function restore() {
+  await i18n.ready;
+  let records = [];
+  try {
+    records = await Store.all();
+  } catch (error) {
+    console.warn("cache indisponível:", error.message);
+    return;
+  }
+  for (const r of records) {
+    const source = DND.sources.find((s) => s.id === r.source);
+    if (!source || r.version !== source.version) {
+      status.textContent = i18n.t("dnd.outdated", { name: r.name });
+      Store.forget(r.source).catch(() => {});
+      continue;
+    }
+    loaded.set(r.source, r);
+  }
+  if (!loaded.size) return;
+  render();
+  const last = [...loaded.values()].at(-1);
+  status.textContent = i18n.t("dnd.cached", {
+    name: last.name,
+    date: dateFormat().format(last.savedAt),
+    summary: summary(DND.merge([...loaded.values()].map((r) => r.data))),
+  });
 }
 
 /*
@@ -87,7 +212,9 @@ async function receive(file) {
 */
 function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
-  node.append(...children.flat(Infinity).filter((c) => c != null && c !== false));
+  node.append(
+    ...children.flat(Infinity).filter((c) => c != null && c !== false),
+  );
   return node;
 }
 
@@ -178,8 +305,6 @@ function showClasses(classes) {
       ),
     ),
   );
-  document.querySelector("[data-waiting]").hidden = true;
-  classesBox.hidden = false;
 }
 
 // Desenha a árvore de títulos como listas aninhadas (até 2 níveis de fundo).
@@ -199,7 +324,6 @@ function showMap(outline) {
       return li;
     });
   bookTree.replaceChildren(...build(outline.children, 0));
-  bookMap.hidden = false;
 }
 
 // Texto da página escolhida, uma linha do PDF por linha.
@@ -237,3 +361,5 @@ dropzone.addEventListener("drop", (event) => {
   const file = event.dataTransfer.files[0];
   if (file) receive(file);
 });
+
+restore();

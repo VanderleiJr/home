@@ -997,6 +997,9 @@
   DND.registerSource({
     id: "phb2024",
     name: "Livro do Jogador (2024)",
+    // Versão do extrator: suba o número sempre que a leitura mudar, para
+    // que os dados guardados no navegador (store.js) sejam relidos.
+    version: 1,
     edition: "2024",
     lang: "pt-BR",
     sha256: [

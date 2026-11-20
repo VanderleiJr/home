@@ -211,3 +211,25 @@
 .feature p {
   margin: 4px 0 4px 16px;
 }
+
+/* ---------- Livros guardados no navegador ---------- */
+
+.books-title {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+
+.books-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+
+/* Nome à esquerda, botão à direita; quebra de linha em telas estreitas. */
+.book {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}

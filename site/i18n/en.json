@@ -217,7 +217,7 @@
     "home": "🌴 Start",
     "saved": "Data saved only in this browser",
     "reading": "⏳ Reading {name}…",
-    "opened": "📖 {name} ({size}): {pages} pages in {ms} ms · {classes} classes, {subclasses} subclasses",
+    "opened": "📖 {name} ({size}): {pages} pages in {ms} ms · {summary}",
     "readError": "⚠️ Couldn't read the PDF: {error}",
     "preview": "🔎 Show the extracted text",
     "page": "Page",
@@ -226,6 +226,14 @@
     "map": "🗺 Book map",
     "classesTitle": "📜 Classes extracted from the book",
     "features": "Features",
-    "subclasses": "Subclasses"
+    "subclasses": "Subclasses",
+    "summary": "{classes} classes, {species} species, {backgrounds} backgrounds, {feats} feats, {spells} spells",
+    "cached": "📚 {name}, saved in this browser on {date} · {summary}",
+    "books": "📚 Books saved in this browser",
+    "forget": "🗑 Forget",
+    "forgetHint": "Deletes the data extracted from {name} from this browser",
+    "forgotten": "🗑 {name} forgotten: its data was deleted from this browser.",
+    "outdated": "🔄 The reader changed since {name} was saved: load the PDF again.",
+    "noStore": "⚠️ Couldn't save in this browser ({error}): the data lasts until you close the page."
   }
 }
