@@ -348,23 +348,67 @@
     const minX = Math.min(...hItems.map((it) => it.x)) - 20;
     const maxX = Math.max(...hItems.map((it) => it.x + it.w)) + 30;
 
-    // Linhas de dados, agrupadas por y (pedaços da mesma altura = mesma linha).
-    let lastY = header[header.length - 1].y;
+    /*
+      Linhas de dados, agrupadas por y (pedaços da mesma altura = mesma
+      linha). "dx" e "yOff" deslocam uma coluna de continuação (veja
+      abaixo) para cima das colunas originais e depois delas.
+    */
     const used = [...header, title];
     const clusters = [];
-    for (; i < all.length; i++) {
-      const l = all[i];
-      if (l.bold || l.x > maxX || l.x < minX) continue;
-      if (l.y - lastY > l.size * maxGap) break;
-      // Letra menor que a do cabeçalho: nota de rodapé ("*Primordial…"), fim.
-      if (l.size < headSize - 1.5) break;
-      lastY = l.y;
-      used.push(l);
-      const c = clusters.find((c) => Math.abs(c.y - l.y) < 2);
-      if (c) c.items.push(...l.items);
-      else clusters.push({ y: l.y, items: [...l.items] });
+    let firstX = null;
+    function gather(lines, fromY, dx = 0, yOff = 0) {
+      let lastY = fromY;
+      for (const l of lines) {
+        if (l.y <= fromY) continue;
+        const x = l.x - dx;
+        // Negrito no meio dos dados é cabeçalho de outra coisa, exceto
+        // quando a linha é recuada: aí é continuação de uma célula que
+        // começa com um termo em negrito ("Unicórnio. Veja…").
+        if (l.bold && !(firstX != null && x > firstX + 10)) continue;
+        if (x > maxX || x < minX) continue;
+        if (l.y - lastY > l.size * maxGap) break;
+        // Letra menor que a do cabeçalho: nota de rodapé ("*Primordial…"), fim.
+        if (l.size < headSize - 1.5) break;
+        lastY = l.y;
+        firstX ??= x;
+        used.push(l);
+        const items = l.items.map((it) => ({ ...it, x: it.x - dx }));
+        const y = l.y + yOff;
+        const c = clusters.find((c) => Math.abs(c.y - y) < 2);
+        if (c) c.items.push(...items);
+        else clusters.push({ y, items });
+      }
     }
+    gather(all.slice(i), header[header.length - 1].y);
     if (!clusters.length) return null;
+
+    /*
+      Tabela longa continua nas colunas seguintes (e na outra página),
+      reabrindo com o mesmo cabeçalho no topo e sem título ("1d100
+      Efeito"). Segue coluna a coluna enquanto a próxima começar assim.
+    */
+    if (header.length === 1) {
+      const head = header[0];
+      const side = (l, pageWidth) =>
+        l.x < (pageWidth || 612) / 2 - 20 ? 0 : 1;
+      let slot = title.page * 2 + side(head, page.width);
+      for (let next = slot + 1; next <= slot + 6; next++) {
+        const pg = book.pages[(next >> 1) - 1];
+        if (!pg) break;
+        const inCol = pg.lines.filter((l) => side(l, pg.width) === (next & 1));
+        const cont = inCol.find(
+          (l) => l.bold && l.text === head.text && !l.inTable,
+        );
+        // Só vale se for a primeira coisa da coluna (nada acima dela além
+        // do cabeçalho da página): senão é outra tabela igual, com título.
+        if (!cont || inCol.some((l) => l.y > 30 && l.y < cont.y - 2)) break;
+        used.push(cont);
+        const lines = inCol
+          .filter((l) => l.y > cont.y && font.test(l.font))
+          .sort((a, b) => a.y - b.y);
+        gather(lines, cont.y, cont.x - head.x, (next - slot) * 10000);
+      }
+    }
 
     /*
       Colunas: saem dos dados, onde as células vêm sempre bem separadas.

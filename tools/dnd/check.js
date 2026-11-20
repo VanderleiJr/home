@@ -273,6 +273,33 @@ function expect(label, ok, detail = "") {
     `   ${spells.filter((s) => s.ritual).length} rituais · ${spells.filter((s) => s.concentration).length} de concentração · ${spells.filter((s) => s.components.cost).length} com componente de custo · ${spells.filter((s) => s.higher).length} com efeito em círculo superior`,
   );
 
+  // ---------- Vazamentos no texto ----------
+  // Rodapé, linhas de tabela ou ficha de criatura no meio dos parágrafos.
+  console.log("\n🧹 Texto limpo");
+  const leaks = { rodapé: [], tabela: [], ficha: [] };
+  (function walk(v, path) {
+    if (typeof v === "string") {
+      if (/CAP[IÍ]TULO\s*\d+\s*\|/.test(v)) leaks.rodapé.push(path);
+      if (/(^|\s)\d\d-\d\d [A-ZÁÉÍÓÚ]/.test(v)) leaks.tabela.push(path);
+      if (/\bFor \d+ [+–-]\d|Iniciativa [+–-]\d+ \(\d+\)/.test(v))
+        leaks.ficha.push(path);
+    } else if (v && typeof v === "object")
+      for (const k in v)
+        if (!["outline", "toc", "tables"].includes(k))
+          walk(v[k], `${path}/${v[k]?.name || k}`);
+  })(data, "");
+  for (const [kind, list] of Object.entries(leaks))
+    expect(`sem ${kind} no texto`, !list.length, list.slice(0, 3).join("; "));
+  const surge = data.classes
+    .find((c) => c.id === "feiticeiro")
+    ?.subclasses.flatMap((s) => s.features.flatMap((f) => f.tables))
+    .find((t) => /Surto de Magia/.test(t.title));
+  expect(
+    "tabela em várias colunas: Surto de Magia Selvagem com 25 linhas",
+    surge?.rows.length === 25,
+    `${surge?.rows.length}`,
+  );
+
   // ---------- Equipamento ----------
   const eq = data.equipment || {};
   console.log("\n🛡  Equipamento");

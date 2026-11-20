@@ -16,9 +16,15 @@
   const TITLE_FONT = "WolpePegasus-Regular";
   const SECTION_FONT = "MrsEavesOT-Roman";
 
-  // Rodapé com "CAPÍTULO 3 | CLASSES DE PERSONAGEM 127" e o número da página.
+  /*
+    Rodapé com "CAPÍTULO 3 | CLASSES DE PERSONAGEM 127" e o número da
+    página. Nas páginas ímpares vem em corpo 12, à direita; nas pares,
+    em corpo 9, à esquerda. Por isso o texto também identifica o rodapé.
+  */
   const isFooter = (l) =>
-    l.font === "MrsEavesOT-Bold" && l.size === 12 && l.y > 730;
+    l.font === "MrsEavesOT-Bold" &&
+    l.y > 730 &&
+    (l.size === 12 || /^CAP[IÍ]TULO\s*\d+\s*\|/i.test(l.text));
 
   const headings = [
     { level: 0, test: is(TITLE_FONT, 38) }, // capítulo
@@ -82,11 +88,57 @@
   // ilustração (DaiVernon) e linhas de tabela.
   const isNoise = (l) =>
     l.inTable ||
+    l.inStat ||
     isFooter(l) ||
     l.size < 7 ||
     l.font === TITLE_FONT ||
     l.font.startsWith("DaiVernon") ||
     l.font === "TTJenevers-MediumItalic";
+
+  /*
+    Ficha de criatura (as feras do Senhor das Feras, os espíritos das
+    magias de invocação, o apêndice B): título "Fera do Mar" em
+    ScalaSansCaps corpo 13 e, abaixo, linhas em ScalaSans (CA, PV,
+    "For 14 +2 +2"…, Traços, Ações). Não é parágrafo nem tabela, então
+    as linhas são marcadas (inStat) e saem do texto das características.
+    A ficha acaba na primeira linha de outra fonte na mesma coluna.
+  */
+  function markStatBlocks(book) {
+    const isTitle = (l) => l.font === "ScalaSansCaps-Bold" && l.size >= 12.5;
+    // Colunas numeradas em sequência: página × 2 + lado (0 = esquerda).
+    const column = (n) => {
+      const page = book.pages[(n >> 1) - 1];
+      if (!page) return null;
+      const mid = (page.width || 612) / 2;
+      return page.lines
+        .filter((l) => (l.x < mid - 20 ? 0 : 1) === (n & 1) && !isFooter(l))
+        .sort((a, b) => a.y - b.y);
+    };
+    /*
+      Marca as linhas da ficha a partir de "from"; devolve true se a coluna
+      acabou ainda dentro dela (a ficha continua na coluna seguinte).
+      Legendas de ilustração (DaiVernon) e letras miúdas (MOD/SG, créditos
+      de arte) não interrompem a ficha.
+    */
+    const mark = (lines, from) => {
+      for (const l of lines) {
+        if (l.y <= from) continue;
+        if (l.font.startsWith("DaiVernon") || l.size < 7) continue;
+        if (!l.font.startsWith("ScalaSans") || isTitle(l)) return false;
+        l.inStat = true;
+      }
+      return true;
+    };
+    for (let n = 2; n <= book.pages.length * 2 + 1; n++) {
+      for (const title of column(n) || []) {
+        if (!isTitle(title)) continue;
+        title.inStat = true;
+        let next = n;
+        let open = mark(column(n), title.y);
+        while (open && ++next <= n + 2) open = mark(column(next) || [], 0);
+      }
+    }
+  }
 
   /*
     Letra capitular: o "G" gigante de "Guerreiros…" vem numa linha
@@ -1218,7 +1270,7 @@
     name: "Livro do Jogador (2024)",
     // Versão do extrator: suba o número sempre que a leitura mudar, para
     // que os dados guardados no navegador (store.js) sejam relidos.
-    version: 3,
+    version: 5,
     edition: "2024",
     lang: "pt-BR",
     sha256: [
@@ -1229,6 +1281,7 @@
 
     extract(book) {
       fixDropCaps(book);
+      markStatBlocks(book);
       const outline = DND.outline(book, { headings, skip: isFooter });
       return {
         source: this.id,
