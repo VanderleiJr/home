@@ -1,112 +1,17 @@
 /*
-  Comportamento da página inicial: janelas, barra de tarefas, menu
-  Iniciar, relógio e contador. Só a API do navegador (DOM), sem bibliotecas.
+  Comportamento da página inicial: menu Iniciar, contador, carro e
+  jogo. Só a API do navegador (DOM), sem bibliotecas.
   O atributo "defer" no <script> garante que o HTML já foi lido quando
   este código roda — por isso podemos buscar elementos logo de cara.
 */
 
-const desktop = document.querySelector(".desktop");
-const windows = [...document.querySelectorAll(".window")];
-const tasks = document.querySelector(".tasks");
+/*
+  Janelas, barra de tarefas e relógio vêm do assets/desktop.js
+  (compartilhado com os projetos). Aqui fica o que é só da página
+  inicial: o menu Iniciar, o contador, o carro e o jogo.
+*/
 const startButton = document.querySelector(".start-button");
 const startMenu = document.getElementById("start-menu");
-
-// z-index sempre crescente: a última janela clicada fica na frente das outras.
-let topZ = 10;
-
-/* ---------- Janelas ---------- */
-
-function focusWindow(win) {
-  windows.forEach((w) => w.classList.remove("is-active"));
-  win.classList.add("is-active");
-  win.style.zIndex = ++topZ;
-  updateTasks();
-}
-
-function openWindow(win) {
-  win.hidden = false;
-  win.classList.remove("is-minimized");
-  focusWindow(win);
-}
-
-function closeWindow(win) {
-  win.hidden = true;
-  win.classList.remove("is-active");
-  updateTasks();
-}
-
-function minimizeWindow(win) {
-  win.classList.add("is-minimized");
-  win.classList.remove("is-active");
-  updateTasks();
-}
-
-// Barra de tarefas: recriada a cada mudança, com um botão por janela aberta.
-// aria-pressed informa a leitores de tela qual janela está em foco.
-function updateTasks() {
-  const buttons = windows
-    .filter((win) => !win.hidden)
-    .map((win) => {
-      const active = win.classList.contains("is-active");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "btn task";
-      button.textContent = win.querySelector(".titlebar-text").textContent;
-      button.setAttribute("aria-pressed", String(active));
-      button.addEventListener("click", () =>
-        active ? minimizeWindow(win) : openWindow(win),
-      );
-      return button;
-    });
-  tasks.replaceChildren(...buttons);
-}
-
-/*
-  Arrastar pela barra de título com Pointer Events, que funcionam igual
-  para mouse, caneta e toque. setPointerCapture mantém os eventos chegando
-  mesmo se o ponteiro sair da barra durante o movimento rápido.
-*/
-const canDrag = window.matchMedia("(min-width: 720px)");
-
-windows.forEach((win) => {
-  /*
-    Em telas grandes, focamos já no pointerdown (antes de arrastar).
-    No celular, só no click: o Safari do iPhone cancela o toque se a
-    página muda visualmente no começo dele — ele interpreta como "hover"
-    e espera um segundo toque. Focar a janela muda cores e a barra de
-    tarefas, então isso fazia os botões de fechar/minimizar falharem.
-  */
-  win.addEventListener(
-    "pointerdown",
-    () => canDrag.matches && focusWindow(win),
-  );
-  win.addEventListener("click", () => !canDrag.matches && focusWindow(win));
-
-  const bar = win.querySelector(".titlebar");
-  bar.addEventListener("pointerdown", (event) => {
-    if (!canDrag.matches || event.target.closest("button")) return;
-
-    // Distância entre o ponteiro e o canto da janela, para ela não "pular".
-    const offsetX = event.clientX - win.offsetLeft;
-    const offsetY = event.clientY - win.offsetTop;
-    bar.setPointerCapture(event.pointerId);
-
-    const move = (e) => {
-      // Limita a posição para a janela não sair da área de trabalho.
-      const maxX = desktop.clientWidth - win.offsetWidth;
-      const maxY = desktop.clientHeight - bar.offsetHeight;
-      win.style.left = `${Math.max(0, Math.min(e.clientX - offsetX, maxX))}px`;
-      win.style.top = `${Math.max(0, Math.min(e.clientY - offsetY, maxY))}px`;
-    };
-
-    bar.addEventListener("pointermove", move);
-    bar.addEventListener(
-      "pointerup",
-      () => bar.removeEventListener("pointermove", move),
-      { once: true },
-    );
-  });
-});
 
 /* ---------- Menu Iniciar ---------- */
 
@@ -128,16 +33,11 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  // Abrir (data-open), minimizar e fechar são tratados pelo desktop.js.
   const opener = target.closest("[data-open]");
-  if (opener) openWindow(document.getElementById(opener.dataset.open));
-
   const control = target.closest("[data-action]");
-  if (control) {
-    const action = control.dataset.action;
-    const win = control.closest(".window");
-    if (action === "close") closeWindow(win);
-    if (action === "minimize") minimizeWindow(win);
-    if (action === "close-all") windows.forEach(closeWindow);
+  if (control?.dataset.action === "close-all") {
+    document.querySelectorAll(".window").forEach(desktop.close);
   }
 
   // Qualquer clique fora do menu (ou em um item dele) fecha o menu.
@@ -152,24 +52,6 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") setStartMenu(false);
 });
-
-/* ---------- Relógio da bandeja ---------- */
-
-// toLocaleTimeString formata a hora no idioma escolhido (i18n.lang).
-const clock = document.querySelector(".clock");
-
-function tick() {
-  const now = new Date();
-  clock.textContent = now.toLocaleTimeString(i18n.lang, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  clock.dateTime = now.toISOString();
-}
-
-// O idioma só é conhecido depois que o i18n.js termina de carregar.
-i18n.ready.then(tick);
-setInterval(tick, 15_000);
 
 /* ---------- Contador de visitas ---------- */
 
@@ -705,9 +587,3 @@ gyroButton.addEventListener("click", async () => {
 
 measure();
 requestAnimationFrame(drive);
-
-/* ---------- Estado inicial ---------- */
-
-focusWindow(document.getElementById("win-welcome"));
-// Os botões da barra de tarefas copiam o título das janelas: refaz após a tradução.
-i18n.ready.then(updateTasks);

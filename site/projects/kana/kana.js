@@ -148,11 +148,10 @@ for (const level of LEVELS) {
   O que fica salvo:
   - journey: estrelas de cada nível da jornada (nunca é apagado);
   - best: recordes dos modos livres;
-  - settings: as últimas escolhas do menu;
-  - minimized: quais janelas de alfabeto estão minimizadas.
+  - settings: as últimas escolhas do menu.
 */
 const STORE_KEY = "kana:progress";
-let store = { journey: {}, best: {}, settings: null, minimized: [] };
+let store = { journey: {}, best: {}, settings: null };
 
 try {
   const saved = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -622,7 +621,6 @@ document.addEventListener("click", (event) => {
   if (action === "again") start(session.mode, session.levelIndex);
   if (action === "next-level") start("journey", session.levelIndex + 1);
   if (action === "menu") show(menu);
-  if (action === "minimize") minimize(target.closest(".win-kana"), true);
 });
 
 // ---------- Janela da jornada: o mapa de níveis ----------
@@ -726,62 +724,9 @@ function renderTable(win) {
   win.querySelector(".kana-table").replaceChildren(...sections);
 }
 
-/*
-  Minimizar = esconder a janela com o atributo hidden e deixar só o
-  botão dela na barra de tarefas, como no Windows 98. aria-pressed
-  diz a leitores de tela se a janela está aberta ou não.
-*/
-const tasks = $(".tasks");
-
-function minimize(win, minimized) {
-  win.hidden = minimized;
-  const script = win.dataset.script;
-  store.minimized = store.minimized.filter((s) => s !== script);
-  if (minimized) store.minimized.push(script);
-  save();
-  updateTasks();
-}
-
-function updateTasks() {
-  const buttons = [...kanaWindows].map((win) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "btn task";
-    button.textContent = win.querySelector(".titlebar-text").textContent;
-    button.setAttribute("aria-pressed", String(!win.hidden));
-    button.addEventListener("click", () => minimize(win, !win.hidden));
-    return button;
-  });
-  tasks.replaceChildren(...buttons);
-}
-
-// Restaura as janelas que estavam minimizadas na última visita.
-for (const win of kanaWindows) {
-  win.hidden = store.minimized.includes(win.dataset.script);
-}
-
 // Só monta o que tem texto depois que a tradução estiver pronta.
 i18n.ready.then(() => {
   renderJourney();
   showRecords();
   kanaWindows.forEach(renderTable);
-  updateTasks();
 });
-
-// ---------- Relógio da bandeja ----------
-
-// toLocaleTimeString formata a hora no idioma escolhido (i18n.lang).
-const clock = $(".clock");
-
-function updateClock() {
-  const now = new Date();
-  clock.textContent = now.toLocaleTimeString(i18n.lang, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  clock.dateTime = now.toISOString();
-}
-
-// O idioma só é conhecido depois que o i18n.js termina de carregar.
-i18n.ready.then(updateClock);
-setInterval(updateClock, 15_000);

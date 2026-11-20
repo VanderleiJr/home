@@ -18,7 +18,7 @@ O código é aberto e foi escrito para ser lido: cada projeto traz comentários 
 ```
 site/                     ← única pasta publicada
 ├── index.html            página inicial
-├── assets/               base compartilhada (scene.*, i18n.js) + CSS/JS da página inicial
+├── assets/               base compartilhada (scene.*, i18n.js, win98.css, desktop.js) + CSS/JS da página inicial
 ├── i18n/                 textos de cada idioma (pt-BR.json, en.json…) e languages.json
 └── projects/<projeto>/   cada projeto: HTML + CSS + JS
 tools/vlibras/            gerador dos sinais do libras.exe (fora do site)

@@ -19,8 +19,11 @@
     <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
     <script src="assets/scene.js"></script>
     <script src="assets/i18n.js"></script>
+    <!-- Visual e comportamento Win98 compartilhados com os projetos. -->
+    <link rel="stylesheet" href="assets/win98.css" />
     <link rel="stylesheet" href="assets/home.css" />
     <!-- defer: baixa o script em paralelo, mas só executa depois de ler o HTML. -->
+    <script src="assets/desktop.js" defer></script>
     <script src="assets/home.js" defer></script>
   </head>
   <body>
@@ -117,14 +120,14 @@
           <div class="titlebar-controls">
             <button
               type="button"
-              class="btn"
+              class="btn btn-minimize"
               data-action="minimize"
               aria-label="Minimizar"
               data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
-              class="btn"
+              class="btn btn-close"
               data-action="close"
               aria-label="Fechar"
               data-i18n-attr="aria-label:common.close"
@@ -178,14 +181,14 @@
           <div class="titlebar-controls">
             <button
               type="button"
-              class="btn"
+              class="btn btn-minimize"
               data-action="minimize"
               aria-label="Minimizar"
               data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
-              class="btn"
+              class="btn btn-close"
               data-action="close"
               aria-label="Fechar"
               data-i18n-attr="aria-label:common.close"
@@ -232,14 +235,14 @@
           <div class="titlebar-controls">
             <button
               type="button"
-              class="btn"
+              class="btn btn-minimize"
               data-action="minimize"
               aria-label="Minimizar"
               data-i18n-attr="aria-label:common.minimize"
             ></button>
             <button
               type="button"
-              class="btn"
+              class="btn btn-close"
               data-action="close"
               aria-label="Fechar"
               data-i18n-attr="aria-label:common.close"

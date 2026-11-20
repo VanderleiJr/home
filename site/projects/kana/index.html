@@ -18,7 +18,11 @@
     <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
     <script src="../../assets/scene.js"></script>
     <script src="../../assets/i18n.js"></script>
+    <!-- Visual Win98 compartilhado (janelas, botões, barra de tarefas). -->
+    <link rel="stylesheet" href="../../assets/win98.css" />
     <link rel="stylesheet" href="kana.css" />
+    <!-- Arrastar, minimizar e relógio: comportamento compartilhado das janelas. -->
+    <script src="../../assets/desktop.js" defer></script>
     <script src="kana.js" defer></script>
   </head>
   <body>
@@ -29,7 +33,7 @@
     </div>
 
     <!-- Textos em português com chaves data-i18n*: o i18n.js traduz (site/i18n/*.json). -->
-    <main class="desktop">
+    <main class="desktop desktop-flow">
       <section class="window win-game" aria-labelledby="game-title">
         <div class="titlebar">
           <h1 class="titlebar-text" id="game-title">🎴 kana.exe</h1>
@@ -277,7 +281,11 @@
         aria-labelledby="hiragana-title"
       >
         <div class="titlebar">
-          <h2 class="titlebar-text" id="hiragana-title" data-i18n="kana.hiraganaTitle">
+          <h2
+            class="titlebar-text"
+            id="hiragana-title"
+            data-i18n="kana.hiraganaTitle"
+          >
             あ hiragana.txt
           </h2>
           <div class="titlebar-controls">
@@ -314,7 +322,11 @@
         aria-labelledby="katakana-title"
       >
         <div class="titlebar">
-          <h2 class="titlebar-text" id="katakana-title" data-i18n="kana.katakanaTitle">
+          <h2
+            class="titlebar-text"
+            id="katakana-title"
+            data-i18n="kana.katakanaTitle"
+          >
             ア katakana.txt
           </h2>
           <div class="titlebar-controls">
@@ -345,7 +357,7 @@
       <a class="btn start-button" href="../../" data-i18n="kana.home"
         >🌴 Início</a
       >
-      <!-- Um botão por janela de alfabeto, criado pelo JS (veja kana.js). -->
+      <!-- Um botão por janela minimizável, criado pelo assets/desktop.js. -->
       <div class="tasks"></div>
       <span class="taskbar-hint" data-i18n="kana.saved"
         >Progresso salvo neste navegador</span
@@ -359,7 +371,7 @@
         >
           <option value="pt-BR" lang="pt-BR">Português</option>
         </select>
-        <!-- Relógio da bandeja, como na página inicial (preenchido pelo JS). -->
+        <!-- Relógio da bandeja, preenchido pelo assets/desktop.js. -->
         <time class="clock">--:--</time>
       </div>
     </footer>

@@ -1,0 +1,395 @@
+/*
+  win98.css: o visual Windows 98 compartilhado por todas as páginas —
+  janelas, barra de título, botões, campos, caixas de grupo e barra de
+  tarefas. Cada página carrega este arquivo depois do scene.css e antes
+  do próprio CSS, que só acrescenta o que é dela (conteúdo e tamanhos).
+  O comportamento (arrastar, minimizar, relógio) fica no desktop.js.
+
+  Por que um arquivo só: as páginas repetiam ~200 linhas iguais. Agora
+  uma correção aqui vale para todas, e uma página nova já nasce com o
+  visual pronto.
+*/
+
+/* Variáveis CSS (custom properties): definidas uma vez, reutilizadas em todo o site. */
+:root {
+  /* Cinza clássico das interfaces dos anos 90. */
+  --face: #c0c0c0;
+  --taskbar-h: 36px;
+
+  /*
+    O "relevo" das janelas: quatro sombras internas (inset).
+    Claro em cima/esquerda e escuro embaixo/direita = parece saltado.
+    Invertendo as cores, parece afundado (botão pressionado, campo de texto).
+  */
+  --bevel-out:
+    inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080,
+    inset 2px 2px #dfdfdf;
+  --bevel-in:
+    inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf,
+    inset 2px 2px #808080;
+
+  --font: Tahoma, "MS Sans Serif", Verdana, sans-serif;
+}
+
+/* Elementos com o atributo hidden somem, mesmo que outra regra defina display. */
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 13px/1.45 var(--font);
+  color: #000;
+  background: var(--night);
+}
+
+a {
+  color: #0000ee;
+}
+
+:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* ---------- Janelas ---------- */
+
+.window {
+  position: relative;
+  padding: 3px;
+  background: var(--face);
+  /* Relevo + uma sombra deslocada sem desfoque, bem "retrô". */
+  box-shadow:
+    var(--bevel-out),
+    8px 8px 0 rgb(0 0 0 / 0.35);
+  /*
+    Arrastar = deslocar a janela a partir do lugar dela. A propriedade
+    "translate" (separada de "transform") recebe o deslocamento que o
+    desktop.js grava em --drag-x/--drag-y; o layout da página não muda.
+  */
+  translate: var(--drag-x, 0) var(--drag-y, 0);
+}
+
+.window.is-minimized {
+  display: none;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+  padding: 3px 3px 3px 6px;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(
+    90deg,
+    var(--pink),
+    var(--purple) 60%,
+    var(--cyan)
+  );
+  cursor: grab;
+  /* Impede o navegador de rolar a página enquanto arrastamos com o dedo. */
+  touch-action: none;
+  user-select: none;
+}
+
+/* Janela sem foco: barra de título acinzentada. */
+.window:not(.is-active) .titlebar {
+  color: #e0e0e0;
+  background: linear-gradient(90deg, #808080, #b5b5b5);
+}
+
+/* Serve para <div>, <h1> ou <h2>: zera o tamanho e a margem dos títulos. */
+.titlebar-text {
+  margin: 0;
+  font-size: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.titlebar-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.window-body {
+  padding: 12px;
+}
+
+/* Campo "afundado": endereço, área de texto, placar. */
+.field {
+  padding: 4px 6px;
+  background: #fff;
+  box-shadow: var(--bevel-in);
+}
+
+.statusbar {
+  padding: 2px 6px;
+  box-shadow: var(--bevel-in);
+}
+
+/* ---------- Botões ---------- */
+
+/* Botões no estilo da época: relevo para fora; ao clicar, relevo para dentro. */
+.btn {
+  display: inline-block;
+  min-width: 18px;
+  padding: 4px 10px;
+  font: inherit;
+  color: #000;
+  text-decoration: none;
+  background: var(--face);
+  border: 0;
+  border-radius: 0;
+  /* Desliga o visual nativo de botão (o Safari do iPhone aplica o dele). */
+  appearance: none;
+  box-shadow: var(--bevel-out);
+  cursor: pointer;
+}
+
+.btn:active,
+.btn[aria-pressed="true"] {
+  box-shadow: var(--bevel-in);
+}
+
+.btn[aria-pressed="true"] {
+  font-weight: bold;
+}
+
+/*
+  Ícones de minimizar e fechar desenhados com CSS, não com texto:
+  caracteres como "_" e "×" mudam de posição conforme a fonte de cada
+  aparelho. Pseudo-elementos (::before/::after) são caixas extras que o
+  CSS cria dentro do botão — aqui, barrinhas pretas posicionadas.
+*/
+.titlebar .btn {
+  position: relative;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+}
+
+.btn-minimize::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 2px;
+  background: #000;
+}
+
+.btn-close::before,
+.btn-close::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 2px;
+  background: #000;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.btn-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+kbd {
+  padding: 0 4px;
+  font: 11px var(--font);
+  color: #444;
+  border: 1px solid #808080;
+}
+
+/* ---------- Formulários ---------- */
+
+/*
+  Moldura "entalhada" do Windows 98: borda cinza + sombra branca logo
+  ao lado. Precisa ser uma border de verdade: o navegador só abre o
+  espaço do <legend> na borda — uma linha feita com box-shadow passaria
+  por cima do texto.
+*/
+fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 10px;
+  padding: 6px 10px 8px;
+  border: 1px solid #808080;
+  box-shadow:
+    1px 1px #fff,
+    inset 1px 1px #fff;
+}
+
+/* O fundo cinza cobre a sombra interna que passaria atrás do título. */
+legend {
+  padding: 0 4px;
+  background: var(--face);
+}
+
+/* accent-color pinta rádios e caixas de seleção nativos com a cor do tema. */
+input[type="radio"],
+input[type="checkbox"] {
+  margin: 0 4px 0 0;
+  vertical-align: -2px;
+  accent-color: var(--purple);
+}
+
+/* ---------- Área de trabalho "em fluxo" (páginas dos projetos) ---------- */
+
+/*
+  flex-wrap: as janelas ficam lado a lado se couberem e uma embaixo da
+  outra se não — sem precisar de media query para isso. Cada página só
+  diz a largura de cada janela (flex-basis).
+*/
+.desktop-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px 12px calc(var(--taskbar-h) + 24px);
+}
+
+/*
+  Em telas largas, quem rola é a área das janelas, não a página: a
+  barra de rolagem da página estreitaria a tela e deslocaria o cenário
+  em relação à página inicial (que não rola).
+*/
+@media (min-width: 720px) {
+  body:has(.desktop-flow) {
+    overflow: hidden;
+  }
+
+  .desktop-flow {
+    height: calc(100dvh - var(--taskbar-h));
+    padding-bottom: 24px;
+    overflow-y: auto;
+  }
+}
+
+/* ---------- Barra de tarefas ---------- */
+
+.taskbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--taskbar-h);
+  padding: 3px;
+  background: var(--face);
+  box-shadow:
+    inset 0 1px #fff,
+    inset 0 2px #dfdfdf;
+}
+
+.start-button {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  font-weight: bold;
+}
+
+/* Um botão por janela minimizável, criado pelo desktop.js. */
+.tasks {
+  display: flex;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+}
+
+.task {
+  flex: 0 1 170px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.task[aria-pressed="true"] {
+  background: #e0e0e0;
+}
+
+.taskbar-hint {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #444;
+}
+
+.tray {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  margin-left: auto;
+  padding: 0 10px;
+  box-shadow: var(--bevel-in);
+}
+
+/* ---------- Celular ---------- */
+
+/* Media query: estas regras só valem quando a tela tem até 719px de largura. */
+@media (max-width: 719px) {
+  /* Alvos de toque maiores: dedos são menos precisos que o mouse. */
+  .titlebar .btn {
+    width: 32px;
+    height: 26px;
+  }
+
+  .btn-minimize::before {
+    left: 10px;
+    bottom: 7px;
+    width: 12px;
+    height: 3px;
+  }
+
+  .btn-close::before,
+  .btn-close::after {
+    width: 14px;
+    height: 3px;
+  }
+
+  /* Sem arrastar no celular: as janelas ficam empilhadas no lugar delas. */
+  .window {
+    translate: none;
+  }
+
+  .titlebar {
+    cursor: default;
+  }
+
+  .desktop-flow > .window {
+    flex-basis: 100%;
+  }
+
+  /* Sem espaço para a dica quando há botões de janela: eles ficam no lugar dela. */
+  .tasks:not(:empty) {
+    flex: 1;
+  }
+
+  .tasks:not(:empty) ~ .taskbar-hint {
+    display: none;
+  }
+}
+
+/* Respeita quem pediu ao sistema para reduzir animações. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
