@@ -201,7 +201,6 @@
     "privacy": "🔒 The file is read only in your browser: nothing is sent to the internet.",
     "noBook": "📭 No book loaded",
     "notPdf": "⚠️ That file is not a PDF.",
-    "received": "📖 {name} ({size}) received",
     "wizard": "Character builder",
     "steps": "Steps",
     "step": {
@@ -216,6 +215,11 @@
     },
     "waiting": "⏳ Load the book to begin.",
     "home": "🌴 Start",
-    "saved": "Data saved only in this browser"
+    "saved": "Data saved only in this browser",
+    "reading": "⏳ Reading {name}…",
+    "opened": "📖 {name} ({size}): {pages} pages read in {ms} ms",
+    "readError": "⚠️ Couldn't read the PDF: {error}",
+    "preview": "🔎 Show the extracted text",
+    "page": "Page"
   }
 }

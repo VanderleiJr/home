@@ -10,8 +10,31 @@ const path = require("node:path");
 const zlib = require("node:zlib");
 const crypto = require("node:crypto");
 
-const file =
-  process.argv[2] || path.join(__dirname, "livros", "livro-do-jogador.pdf");
+// --texto 61,62: em vez do diagnóstico, imprime o texto dessas páginas
+// usando o mesmo leitor do site (site/projects/dnd/pdf.js).
+const args = process.argv.slice(2);
+const textIdx = args.indexOf("--texto");
+const textPages =
+  textIdx >= 0 ? args.splice(textIdx, 2)[1].split(",").map(Number) : null;
+const file = args[0] || path.join(__dirname, "livros", "livro-do-jogador.pdf");
+
+if (textPages) {
+  const PDF = require("../../site/projects/dnd/pdf.js");
+  (async () => {
+    const buf = fs.readFileSync(file);
+    const doc = await PDF.open(
+      buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length),
+    );
+    for (const n of textPages) {
+      console.log(`\n===== página ${n} de ${doc.pageCount} =====`);
+      for (const l of PDF.toLines(await doc.pageItems(n)))
+        console.log(
+          `[${l.size.toFixed(1)}${l.bold ? "b" : ""} x${Math.round(l.x)}] ${l.text}`,
+        );
+    }
+  })();
+  return;
+}
 const buf = fs.readFileSync(file);
 // latin1 mapeia 1 byte → 1 caractere: posições da string = posições no arquivo.
 const bin = buf.toString("latin1");

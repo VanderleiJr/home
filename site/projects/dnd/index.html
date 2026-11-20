@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="dnd.css" />
     <!-- Arrastar, minimizar e relógio: comportamento compartilhado das janelas. -->
     <script src="../../assets/desktop.js" defer></script>
+    <!-- Leitor de PDF próprio (sem bibliotecas): só extrai o texto. -->
+    <script src="pdf.js" defer></script>
     <script src="dnd.js" defer></script>
   </head>
   <body>
@@ -85,6 +87,19 @@
           <p class="statusbar" role="status" data-book-status>
             <span data-i18n="dnd.noBook">📭 Nenhum livro carregado</span>
           </p>
+
+          <!--
+            Prévia do texto extraído, página a página: serve para conferir o
+            leitor de PDF. <details> abre e fecha sem nenhum JavaScript.
+          -->
+          <details class="preview" hidden data-preview>
+            <summary data-i18n="dnd.preview">🔎 Ver o texto extraído</summary>
+            <label class="preview-page">
+              <span data-i18n="dnd.page">Página</span>
+              <input type="number" min="1" value="1" data-preview-page />
+            </label>
+            <pre class="field preview-text" data-preview-text></pre>
+          </details>
         </div>
       </section>
 

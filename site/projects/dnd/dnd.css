@@ -81,3 +81,30 @@
   padding: 24px 12px;
   text-align: center;
 }
+
+/* ---------- Prévia do texto extraído ---------- */
+
+.preview summary {
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.preview-page {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.preview-page input {
+  width: 6ch;
+}
+
+/* pre-wrap mantém as quebras de linha do PDF mas não estoura a janela. */
+.preview-text {
+  max-height: 320px;
+  margin: 0;
+  overflow: auto;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

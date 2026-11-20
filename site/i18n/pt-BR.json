@@ -201,7 +201,6 @@
     "privacy": "🔒 O arquivo é lido só no seu navegador: nada é enviado para a internet.",
     "noBook": "📭 Nenhum livro carregado",
     "notPdf": "⚠️ Esse arquivo não é um PDF.",
-    "received": "📖 {name} ({size}) recebido",
     "wizard": "Criador de personagem",
     "steps": "Etapas",
     "step": {
@@ -216,6 +215,11 @@
     },
     "waiting": "⏳ Carregue o livro para começar.",
     "home": "🌴 Início",
-    "saved": "Dados salvos só neste navegador"
+    "saved": "Dados salvos só neste navegador",
+    "reading": "⏳ Lendo {name}…",
+    "opened": "📖 {name} ({size}): {pages} páginas lidas em {ms} ms",
+    "readError": "⚠️ Não consegui ler o PDF: {error}",
+    "preview": "🔎 Ver o texto extraído",
+    "page": "Página"
   }
 }
