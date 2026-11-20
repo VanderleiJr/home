@@ -33,7 +33,15 @@
   const root = document.documentElement;
 
   // document.currentScript: o próprio <script>. A pasta i18n/ é vizinha de assets/.
-  const base = new URL("../i18n/", document.currentScript.src);
+  const script = document.currentScript;
+  const base = new URL("../i18n/", script.src);
+  /*
+    Página de um idioma só: <script src="…/i18n.js" data-lang="pt-BR">.
+    O d&d.exe lê um livro em português, então traduzir a interface não
+    faria sentido. A página ignora ?lang= e a escolha salva (sem apagá-la:
+    as outras páginas continuam no idioma escolhido).
+  */
+  const fixed = script.dataset.lang;
 
   const readStore = () => {
     try {
@@ -57,11 +65,13 @@
     3. os idiomas configurados no navegador (navigator.languages);
     4. o idioma padrão.
   */
-  const fromUrl = new URLSearchParams(location.search).get("lang");
+  const fromUrl = fixed
+    ? null
+    : new URLSearchParams(location.search).get("lang");
   if (fromUrl) writeStore(fromUrl);
-  const wishes = [fromUrl, readStore(), ...navigator.languages, DEFAULT].filter(
-    Boolean,
-  );
+  const wishes = fixed
+    ? [fixed]
+    : [fromUrl, readStore(), ...navigator.languages, DEFAULT].filter(Boolean);
 
   /*
     Palpite rápido: se o primeiro desejo não é português, escondemos os

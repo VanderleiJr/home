@@ -27,7 +27,8 @@ function el(tag, props = {}, ...children) {
 const Wizard = (() => {
   const R = Rules;
   const t = (k, v) => i18n.t(`dnd.w.${k}`, v);
-  const DRAFT = "dnd-exe:draft";
+  const DRAFT = "dnd-exe:draft"; // versão antiga: um personagem só
+  const ROSTER = "dnd-exe:characters";
   const STEPS = [
     "class",
     "origin",
@@ -35,11 +36,21 @@ const Wizard = (() => {
     "level",
     "spells",
     "equipment",
+    "details",
+    "sheet",
   ];
+  // Alinhamentos: termos do jogo, não texto do livro (chaves dnd.w.align.*).
+  const ALIGNMENTS = ["lg", "ng", "cg", "ln", "n", "cn", "le", "ne", "ce"];
 
   let data = null; // livros juntados (DND.merge)
   let step = "class";
   let c = blank(); // o personagem: só escolhas, nada calculado
+  /*
+    Vários personagens: cada um guarda as escolhas e a etapa em que
+    parou, por id. "current" é o que está aberto no assistente.
+  */
+  let roster = { current: null, list: {} };
+  let notice = ""; // aviso da última importação/exportação
   let panel, summaryBox, stepButtons;
 
   function blank() {
@@ -77,26 +88,80 @@ const Wizard = (() => {
       bought: [],
       armor: null,
       shield: false,
+      details: { name: "", alignment: null, appearance: "", story: "" },
     };
   }
 
-  // ---------- Guardar o rascunho (só neste navegador) ----------
+  // Junta um personagem salvo (talvez de uma versão antiga) ao modelo
+  // atual: campos novos ganham o valor padrão em vez de undefined.
+  const revive = (saved) => ({
+    ...blank(),
+    ...saved,
+    details: { ...blank().details, ...saved?.details },
+  });
+
+  // ---------- Guardar os personagens (só neste navegador) ----------
+
+  // Id curto e único o bastante para uma lista local: hora + sorteio.
+  const newId = () =>
+    Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   // localStorage pode faltar (aba anônima, bloqueado): sem ele o
   // assistente funciona igual, só não lembra na próxima visita.
   function saveDraft() {
+    roster.list[roster.current] = { step, c, updated: Date.now() };
     try {
-      localStorage.setItem(DRAFT, JSON.stringify({ step, c }));
+      localStorage.setItem(ROSTER, JSON.stringify(roster));
     } catch {}
   }
   function loadDraft() {
     try {
-      const saved = JSON.parse(localStorage.getItem(DRAFT));
-      if (saved?.c) {
-        c = { ...blank(), ...saved.c };
-        step = STEPS.includes(saved.step) ? saved.step : "class";
+      const saved = JSON.parse(localStorage.getItem(ROSTER));
+      if (saved?.list) roster = saved;
+      // Migra o rascunho único das versões anteriores para a lista.
+      const old = JSON.parse(localStorage.getItem(DRAFT));
+      if (old?.c) {
+        const id = newId();
+        roster.list[id] = { ...old, updated: Date.now() };
+        roster.current ??= id;
+        localStorage.removeItem(DRAFT);
       }
     } catch {}
+    if (!roster.list[roster.current])
+      roster.current = Object.keys(roster.list)[0] || null;
+    if (roster.current) openCharacter(roster.current, false);
+    else {
+      // Primeira visita: um personagem em branco, salvo na 1ª escolha.
+      roster.current = newId();
+      roster.list[roster.current] = { step, c, updated: Date.now() };
+    }
+  }
+  function openCharacter(id, redraw = true) {
+    const saved = roster.list[id];
+    if (!saved) return;
+    roster.current = id;
+    c = revive(saved.c);
+    step = STEPS.includes(saved.step) ? saved.step : "class";
+    if (redraw) update(() => {});
+  }
+  function newCharacter(chosen = blank(), at = "class") {
+    roster.current = newId();
+    c = revive(chosen);
+    step = at;
+    update(() => {});
+  }
+  // Excluir o último deixa um personagem em branco no lugar.
+  function deleteCharacter() {
+    delete roster.list[roster.current];
+    const next = Object.keys(roster.list)[0];
+    if (next) openCharacter(next);
+    else newCharacter();
+  }
+  // Nome para listas: o nome dado nos detalhes ou "Classe N".
+  function label(ch) {
+    if (ch.details?.name) return ch.details.name;
+    const cls = data && byId(data.classes, ch.class);
+    return cls ? `${cls.name} ${ch.level}` : t("newCharacter");
   }
 
   // ---------- Cálculo: das escolhas para a ficha ----------
@@ -1211,10 +1276,7 @@ const Wizard = (() => {
     out.push(hpPicker(d));
 
     // Características ganhas até o nível: só os nomes; o texto abre sob demanda.
-    const gained = [
-      ...cl.features.filter((f) => f.level <= c.level),
-      ...(d.sub?.features || []).filter((f) => (f.level || 0) <= c.level),
-    ].sort((a, b) => (a.level || 0) - (b.level || 0));
+    const gained = gainedFeatures(d);
     out.push(
       el("h3", {}, t("features")),
       el(
@@ -1232,6 +1294,13 @@ const Wizard = (() => {
     );
     return out;
   }
+
+  // Características da classe e da subclasse até o nível atual.
+  const gainedFeatures = (d) =>
+    [
+      ...(d.cls?.features || []).filter((f) => f.level <= c.level),
+      ...(d.sub?.features || []).filter((f) => (f.level || 0) <= c.level),
+    ].sort((a, b) => (a.level || 0) - (b.level || 0));
 
   // Aumento de atributo dentro de um talento: um select por +1.
   function asiPicker(lv, feat) {
@@ -1661,10 +1730,374 @@ const Wizard = (() => {
     return out;
   }
 
+  // ---------- Etapa 7: detalhes (nome, alinhamento, história) ----------
+
+  /*
+    Campos de texto não redesenham a etapa a cada tecla: recriar o
+    <input> tiraria o cursor do lugar. Só guardam e atualizam o resumo.
+  */
+  function textField(key, multiline) {
+    const id = `details-${key}`;
+    const input = el(multiline ? "textarea" : "input", {
+      id,
+      value: c.details[key],
+      ...(multiline ? { rows: 5, maxLength: 4000 } : { maxLength: 80 }),
+      oninput: (e) => {
+        c.details[key] = e.target.value;
+        saveDraft();
+        showSummary(derive());
+      },
+    });
+    return el(
+      "label",
+      { className: "w-field w-text", htmlFor: id },
+      el("span", {}, t(`d.${key}`)),
+      input,
+    );
+  }
+
+  function stepDetails() {
+    return [
+      textField("name"),
+      choice(
+        t("d.alignment"),
+        ALIGNMENTS.map((a) => ({ value: a, label: t(`align.${a}`) })),
+        c.details.alignment,
+        (v) => update(() => (c.details.alignment = v)),
+        { id: "alignment" },
+      ),
+      textField("appearance", true),
+      textField("story", true),
+    ];
+  }
+
+  // ---------- Etapa 8: ficha final (imprimir, exportar, importar) ----------
+
+  /*
+    A ficha reúne o que as etapas calcularam. Só nomes e números: o texto
+    das regras continua no ⓘ. Na impressão (@media print, no dnd.css)
+    só ela aparece, sem janelas, botões nem cenário.
+  */
+  function stepSheet(d) {
+    const box = (title, ...content) =>
+      el(
+        "section",
+        { className: "sheet-box" },
+        el("h4", {}, title),
+        ...content,
+      );
+    const list = (items) =>
+      items.length
+        ? el(
+            "ul",
+            {},
+            items.map((x) => el("li", {}, x)),
+          )
+        : el("p", {}, "—");
+    const big = (labelText, value) =>
+      el(
+        "div",
+        { className: "w-stat" },
+        el("small", {}, labelText),
+        el("strong", {}, value),
+      );
+    const spellNames = (ids) =>
+      ids.map((id) => byId(data.spells, id)?.name).filter(Boolean);
+    const saves = new Set(d.cls?.savingThrows || []);
+    const skillBonus = (s) =>
+      d.mods[s.ability] + (d.skills.has(s.id) ? d.prof : 0);
+    const perception = data.skills.find((s) => s.id === "percepcao");
+    const header = [
+      d.cls ? `${d.cls.name} ${c.level}` : null,
+      d.sub?.name,
+      d.sp?.name,
+      d.bg?.name,
+      c.details.alignment ? t(`align.${c.details.alignment}`) : null,
+    ].filter(Boolean);
+
+    // Truques e magias de talentos (Iniciado em Magia…), com o nome do talento.
+    const featSpells = d.feats
+      .filter((f) => f.feat.spells)
+      .map(
+        (f) =>
+          `${f.feat.name}: ${spellNames([
+            ...(c.featPicks[`${f.where}:cantrips`] || []),
+            ...(c.featPicks[`${f.where}:spells`] || []),
+          ]).join(", ")}`,
+      );
+    const tools = [d.cls?.tools, d.bg?.tool].filter(Boolean);
+    const languages = [
+      "comum",
+      ...c.languages.filter((id) => id !== "comum"),
+    ].map((id) => byId(data.languages, id)?.name || id);
+
+    return [
+      el(
+        "div",
+        { className: "w-toolbar no-print" },
+        el(
+          "button",
+          { type: "button", className: "btn", onclick: () => print() },
+          t("print"),
+        ),
+        el(
+          "button",
+          { type: "button", className: "btn", onclick: exportCharacter },
+          t("export"),
+        ),
+        // A <label> abre o seletor de arquivo; o input fica escondido.
+        el(
+          "label",
+          { className: "btn" },
+          t("import"),
+          el("input", {
+            type: "file",
+            accept: "application/json,.json",
+            className: "visually-hidden",
+            onchange: (e) => importCharacter(e.target.files[0]),
+          }),
+        ),
+      ),
+      notice
+        ? el("p", { className: "w-hint no-print", role: "status" }, notice)
+        : null,
+      d.pending.length
+        ? el(
+            "p",
+            { className: "w-warn no-print" },
+            t("sheetPending", { n: d.pending.length }),
+          )
+        : null,
+      el(
+        "article",
+        { className: "sheet" },
+        el(
+          "header",
+          { className: "sheet-head" },
+          el("h3", {}, c.details.name || t("unnamed")),
+          el("p", {}, header.join(" · ")),
+        ),
+        el(
+          "div",
+          { className: "w-stats sheet-stats" },
+          big(t("acShort"), String(d.ac)),
+          big(t("hpShort"), d.hp ? String(d.hp) : "—"),
+          big(t("initiative"), signed(R.initiative(d.scores))),
+          big(t("speed"), d.sp ? t("meters", { n: d.sp.speed }) : "—"),
+          big(t("proficiency"), signed(d.prof)),
+          big(
+            t("passive"),
+            String(10 + (perception ? skillBonus(perception) : d.mods.wis)),
+          ),
+        ),
+        el(
+          "div",
+          { className: "sheet-abilities" },
+          R.ABILITIES.map((a) =>
+            el(
+              "div",
+              { className: "w-stat" },
+              el("small", {}, abilityName(a)),
+              el("strong", {}, signed(d.mods[a])),
+              el("span", {}, String(d.scores[a])),
+              el(
+                "small",
+                {},
+                `${t("saveShort")} ${signed(d.mods[a] + (saves.has(a) ? d.prof : 0))}${saves.has(a) ? " ●" : ""}`,
+              ),
+            ),
+          ),
+        ),
+        el(
+          "div",
+          { className: "sheet-cols" },
+          box(
+            t("skills"),
+            el(
+              "ul",
+              { className: "sheet-skills" },
+              data.skills.map((s) =>
+                el(
+                  "li",
+                  {},
+                  d.skills.has(s.id) ? "● " : "○ ",
+                  `${signed(skillBonus(s))} ${s.name} (${abilityShort(s.ability)})`,
+                ),
+              ),
+            ),
+          ),
+          el(
+            "div",
+            {},
+            box(
+              t("attacks"),
+              list(
+                d.attacks.map(
+                  (a) =>
+                    `${a.weapon.name}: ${signed(a.attack)} · ${a.damage} ${a.type}`,
+                ),
+              ),
+            ),
+            d.casting || featSpells.length
+              ? box(
+                  t("spellsTitle"),
+                  d.casting
+                    ? el(
+                        "p",
+                        {},
+                        `${abilityName(d.casting.ability)} · ${t("dc")} ${d.casting.dc} · ${t("spellAttack")} ${signed(d.casting.attack)}`,
+                      )
+                    : null,
+                  d.casting
+                    ? el(
+                        "p",
+                        {},
+                        `${t("slots")}: `,
+                        d.casting.pact
+                          ? t("pact", {
+                              n: d.casting.pact.slots,
+                              circle: d.casting.pact.level,
+                            })
+                          : d.casting.slots
+                              .map((n, k) => (n ? `${k + 1}º: ${n}` : null))
+                              .filter(Boolean)
+                              .join(" · ") || "—",
+                      )
+                    : null,
+                  list([
+                    ...(c.cantrips.length
+                      ? [
+                          `${t("cantrips")}: ${spellNames(c.cantrips).join(", ")}`,
+                        ]
+                      : []),
+                    ...(c.spells.length
+                      ? [`${t("prepared")}: ${spellNames(c.spells).join(", ")}`]
+                      : []),
+                    ...(d.granted.length
+                      ? [`${t("granted")}: ${spellNames(d.granted).join(", ")}`]
+                      : []),
+                    ...featSpells,
+                  ]),
+                )
+              : null,
+            box(
+              t("proficienciesTitle"),
+              list(
+                [
+                  d.cls?.armor && `${t("armor")}: ${d.cls.armor}`,
+                  d.cls?.weapons && `${t("weapons")}: ${d.cls.weapons}`,
+                  tools.length && `${t("tools")}: ${tools.join(", ")}`,
+                  `${t("languages")}: ${languages.join(", ")}`,
+                ].filter(Boolean),
+              ),
+            ),
+          ),
+        ),
+        el(
+          "div",
+          { className: "sheet-cols" },
+          box(
+            t("features"),
+            list(
+              gainedFeatures(d).map(
+                (f) => `${f.level ? `${f.level} · ` : ""}${f.name}`,
+              ),
+            ),
+          ),
+          el(
+            "div",
+            {},
+            box(
+              t("speciesTraits"),
+              list(
+                (d.sp?.traits || []).map((tr) =>
+                  c.traits[tr.name]
+                    ? `${tr.name}: ${c.traits[tr.name]}`
+                    : tr.name,
+                ),
+              ),
+            ),
+            box(t("feats"), list(d.feats.map((f) => f.feat.name))),
+          ),
+        ),
+        box(
+          t("inventory"),
+          list(
+            d.items.map(
+              (x) =>
+                `${x.qty > 1 ? `${x.qty}× ` : ""}${x.item?.name || x.text}`,
+            ),
+          ),
+          el(
+            "p",
+            {},
+            t("goldLeft", {
+              n: Math.max(0, d.gold - d.spent)
+                .toFixed(2)
+                .replace(/\.?0+$/, ""),
+            }),
+          ),
+        ),
+        c.details.appearance
+          ? box(
+              t("d.appearance"),
+              el("p", { className: "sheet-text" }, c.details.appearance),
+            )
+          : null,
+        c.details.story
+          ? box(
+              t("d.story"),
+              el("p", { className: "sheet-text" }, c.details.story),
+            )
+          : null,
+      ),
+    ];
+  }
+
+  /*
+    Exportar: o JSON tem só as escolhas (ids como "guerreiro"), nenhum
+    texto do livro. Por isso pode ser compartilhado à vontade, e quem
+    importa precisa ter o próprio livro carregado para ver a ficha.
+    Blob + URL.createObjectURL + <a download> baixa sem servidor.
+  */
+  const FORMAT = "dnd-exe/character";
+  function exportCharacter() {
+    const json = JSON.stringify(
+      { format: FORMAT, version: 1, character: c },
+      null,
+      2,
+    );
+    const url = URL.createObjectURL(
+      new Blob([json], { type: "application/json" }),
+    );
+    const name = R.norm(label(c)).replace(/\s+/g, "-") || "personagem";
+    el("a", { href: url, download: `${name}.json` }).click();
+    // Dá tempo ao navegador de começar o download antes de liberar a URL.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    notice = t("exported", { file: `${name}.json` });
+    draw();
+  }
+
+  // Importar: o personagem entra como um novo na lista (nada é sobrescrito).
+  async function importCharacter(file) {
+    if (!file) return;
+    try {
+      const json = JSON.parse(await file.text());
+      if (json?.format !== FORMAT || typeof json.character !== "object")
+        throw new Error("formato");
+      notice = t("imported", { name: label(json.character) });
+      newCharacter(json.character, "sheet");
+    } catch {
+      notice = t("importError");
+      draw();
+    }
+  }
+
   // ---------- Resumo (sempre à vista) ----------
 
   function showSummary(d) {
     const title = [
+      c.details.name || null,
       d.cls ? `${d.cls.name} ${c.level}` : null,
       d.sub?.name,
       d.sp?.name,
@@ -1726,18 +2159,48 @@ const Wizard = (() => {
             ),
           )
         : el("p", { className: "w-ok" }, t("allDone")),
-      el(
-        "button",
-        {
-          type: "button",
-          className: "btn",
-          id: "reset",
-          onclick: () => {
-            if (confirm(t("resetConfirm")))
-              update(() => (c = blank()), "class");
-          },
+      // Personagens salvos: trocar, criar outro ou excluir o atual.
+      choice(
+        t("characters"),
+        Object.entries(roster.list)
+          .sort((a, b) => b[1].updated - a[1].updated)
+          .map(([id, saved]) => ({ value: id, label: label(saved.c) })),
+        roster.current,
+        (id) => {
+          notice = "";
+          openCharacter(id);
         },
-        t("reset"),
+        { id: "roster", empty: false },
+      ),
+      el(
+        "p",
+        { className: "w-row" },
+        el(
+          "button",
+          {
+            type: "button",
+            className: "btn",
+            id: "new-character",
+            onclick: () => {
+              notice = "";
+              newCharacter();
+            },
+          },
+          t("newButton"),
+        ),
+        el(
+          "button",
+          {
+            type: "button",
+            className: "btn",
+            id: "delete-character",
+            onclick: () => {
+              if (confirm(t("deleteConfirm", { name: label(c) })))
+                deleteCharacter();
+            },
+          },
+          t("delete"),
+        ),
       ),
     );
   }
@@ -1751,6 +2214,8 @@ const Wizard = (() => {
     level: stepLevel,
     spells: stepSpells,
     equipment: stepEquipment,
+    details: stepDetails,
+    sheet: stepSheet,
   };
 
   function draw() {

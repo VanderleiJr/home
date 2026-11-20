@@ -414,6 +414,157 @@
   cursor: pointer;
 }
 
+/* ---------- Detalhes e ficha ---------- */
+
+/* Campos de texto ocupam a linha toda; o textarea só cresce na altura. */
+.w-text {
+  display: grid;
+  gap: 2px;
+}
+
+.w-text textarea {
+  resize: vertical;
+}
+
+.w-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* A <label class="btn"> do importar abre o seletor de arquivo. */
+.w-toolbar label.btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.w-toolbar label.btn:focus-within {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.sheet {
+  display: grid;
+  gap: 8px;
+}
+
+.sheet-head h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.sheet-head p {
+  margin: 2px 0 0;
+}
+
+/* Seis atributos lado a lado; auto-fit quebra em telas estreitas. */
+.sheet-abilities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 4px;
+}
+
+.sheet-abilities strong {
+  font-size: 1.4rem;
+}
+
+.sheet-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+/* Cada bloco da ficha é uma "moldura" afundada, como um grupo do Win98. */
+.sheet-box {
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border: 1px solid #808080;
+  box-shadow: 1px 1px #fff;
+}
+
+.sheet-box h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.sheet-box ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.sheet-box p {
+  margin: 2px 0;
+}
+
+/* Perícias: a bolinha já marca a proficiência, sem marcadores da lista. */
+.sheet-box .sheet-skills {
+  padding: 0;
+  list-style: none;
+  columns: 2 140px;
+}
+
+/* pre-line: as quebras de linha digitadas nos detalhes continuam lá. */
+.sheet-text {
+  white-space: pre-line;
+}
+
+/*
+  Impressão: só a ficha. O resto da página (cenário, janelas, barra de
+  tarefas, etapas e resumo) some, e a etapa perde a altura fixa e a
+  rolagem, para a ficha seguir por quantas folhas precisar. Cores do
+  Win98 viram preto no branco, que é o que a impressora faz bem.
+*/
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .scene,
+  .taskbar,
+  .win-book,
+  .win-info,
+  .win-wizard > .titlebar,
+  .steps,
+  .wizard > legend,
+  .w-summary,
+  .w-step-title,
+  .w-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .desktop,
+  .window,
+  .window-body,
+  .wizard,
+  .w-layout,
+  .w-panel {
+    display: block;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .w-stat {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+
+  /* Um bloco não é cortado ao meio entre duas folhas. */
+  .sheet-box,
+  .w-stat {
+    break-inside: avoid;
+  }
+}
+
 /*
   Telas estreitas: no fim do arquivo de propósito. Com a mesma
   especificidade, vence a regra que vem depois; aqui ela sobrescreve

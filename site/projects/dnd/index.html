@@ -17,7 +17,8 @@
     <link rel="stylesheet" href="../../assets/scene.css" />
     <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
     <script src="../../assets/scene.js"></script>
-    <script src="../../assets/i18n.js"></script>
+    <!-- data-lang: página só em português, como o livro (veja o i18n.js). -->
+    <script src="../../assets/i18n.js" data-lang="pt-BR"></script>
     <!-- Visual Win98 compartilhado (janelas, botões, barra de tarefas). -->
     <link rel="stylesheet" href="../../assets/win98.css" />
     <link rel="stylesheet" href="dnd.css" />
@@ -208,10 +209,8 @@
                 <button
                   type="button"
                   class="btn"
-                  disabled
-                  title="Em breve"
+                  data-step="details"
                   data-i18n="dnd.step.details"
-                  data-i18n-attr="title:dnd.w.soon"
                 >
                   Detalhes
                 </button>
@@ -220,10 +219,8 @@
                 <button
                   type="button"
                   class="btn"
-                  disabled
-                  title="Em breve"
+                  data-step="sheet"
                   data-i18n="dnd.step.sheet"
-                  data-i18n-attr="title:dnd.w.soon"
                 >
                   Ficha
                 </button>
@@ -293,14 +290,6 @@
         >Dados salvos só neste navegador</span
       >
       <div class="tray">
-        <select
-          class="lang-select"
-          aria-label="Idioma"
-          data-lang-select
-          data-i18n-attr="aria-label:common.language"
-        >
-          <option value="pt-BR" lang="pt-BR">Português</option>
-        </select>
         <!-- Relógio da bandeja, preenchido pelo assets/desktop.js. -->
         <time class="clock">--:--</time>
       </div>
