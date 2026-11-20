@@ -137,3 +137,77 @@
   font-size: 0.8rem;
   white-space: pre-wrap;
 }
+
+/* ---------- Prévia das classes ---------- */
+
+/* Texto do livro pode ter palavras longas: quebra em vez de alargar a janela. */
+.extracted {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.extracted h3 {
+  margin: 12px 0 6px;
+  font-size: 1rem;
+}
+
+.class-card {
+  margin-bottom: 4px;
+}
+
+.class-card > summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.class-card .tagline {
+  font-style: italic;
+}
+
+.class-card dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 8px;
+  margin: 6px 0;
+}
+
+.class-card dt {
+  font-weight: bold;
+}
+
+.class-card dd {
+  margin: 0;
+}
+
+/* Tabela de progressão: rola na horizontal dentro da janela, nunca a página. */
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.progression {
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.progression th,
+.progression td {
+  padding: 1px 4px;
+  border: 1px solid #808080;
+  text-align: center;
+}
+
+/* A coluna de características é texto: alinhada à esquerda e quebrável. */
+.progression td:nth-child(3) {
+  white-space: normal;
+  text-align: left;
+}
+
+.feature summary {
+  cursor: pointer;
+}
+
+.feature p {
+  margin: 4px 0 4px 16px;
+}

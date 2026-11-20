@@ -22,7 +22,12 @@ site/                     ← única pasta publicada
 ├── i18n/                 textos de cada idioma (pt-BR.json, en.json…) e languages.json
 └── projects/<projeto>/   cada projeto: HTML + CSS + JS
 tools/vlibras/            gerador dos sinais do libras.exe (fora do site)
+tools/dnd/                diagnóstico e conferência do extrator do d&d.exe (fora do site)
 ```
+
+## d&d.exe (em construção, branch `feature/dnd`)
+
+Criador de personagem de D&D 2024 que lê o **seu** PDF do Livro do Jogador direto no navegador: nenhum conteúdo dos livros fica no repositório nem é enviado a lugar nenhum. `pdf.js` é um leitor de PDF próprio (sem bibliotecas), `extract.js` reúne ferramentas genéricas de extração e cada livro suportado é uma fonte em `sources/` (reconhecida pelo SHA-256 do arquivo). Com o PDF em `tools/dnd/livros/` (ignorado pelo git), `npm run dnd:check` confere a extração.
 
 ## Traduções
 

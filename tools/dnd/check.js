@@ -85,6 +85,61 @@ function expect(label, ok, detail = "") {
   );
   for (const m of missing) console.log(`   ⚠️  não achei: ${m}`);
 
+  // ---------- Classes ----------
+  const classes = data.classes || [];
+  console.log("\n⚔️  Classes");
+  expect("12 classes", classes.length === 12, `${classes.length}`);
+  const subs = classes.flatMap((c) => c.subclasses);
+  expect("48 subclasses (4 por classe)", subs.length === 48, `${subs.length}`);
+  for (const c of classes) {
+    const problems = [];
+    if (!c.hitDie) problems.push("sem dado de vida");
+    if (!c.primaryAbility?.length) problems.push("sem atributo primário");
+    if (c.savingThrows?.length !== 2) problems.push("salvaguardas");
+    if (!c.skills?.choose) problems.push("perícias");
+    if (!c.equipment?.length) problems.push("equipamento");
+    if (c.progression?.rows.length !== 20)
+      problems.push(`tabela com ${c.progression?.rows.length ?? 0} níveis`);
+    if (c.subclasses.length !== 4)
+      problems.push(`${c.subclasses.length} subclasses`);
+    if (!c.description.length) problems.push("sem descrição");
+    // Toda característica citada na tabela precisa achar a sua seção.
+    if (c.unlinked?.length)
+      problems.push(`tabela cita sem seção: ${c.unlinked.join("; ")}`);
+    for (const sc of c.subclasses)
+      if (sc.features.length < 3)
+        problems.push(`${sc.name}: ${sc.features.length} características`);
+    expect(
+      `${c.name.padEnd(11)} d${c.hitDie} · ${c.primaryAbility?.join("/")} · salv. ${c.savingThrows?.join("+")} · ` +
+        `${c.skills?.choose} perícias · ${c.features.length} caract. · colunas: ${c.progression?.columns.map((n) => n.replace(/^Espaços? de Magia por Círculo de Magia (\d)/, "⚪$1")).join(", ")}`,
+      problems.length === 0,
+      problems.join(" | "),
+    );
+  }
+  const aliases = classes.flatMap((c) =>
+    (c.aliases || []).map(
+      (a) => `${c.name} ${a.level}: "${a.table}" → "${a.feature}"`,
+    ),
+  );
+  if (aliases.length) {
+    console.log(
+      "   ℹ️  nomes diferentes entre tabela e título no próprio livro (ligados pelo nível):",
+    );
+    for (const a of aliases) console.log(`      ${a}`);
+  }
+  const show = args[args.indexOf("--classe") + 1];
+  if (flags.has("--classe")) {
+    const c = classes.find((c) => DND.norm(c.name) === DND.norm(show));
+    console.log(
+      JSON.stringify(
+        c,
+        (k, v) =>
+          k === "description" || k === "text" ? `[${v.length} parágrafos]` : v,
+        2,
+      ),
+    );
+  }
+
   console.log(
     failures ? `\n${failures} verificação(ões) falharam` : "\nTudo certo",
   );

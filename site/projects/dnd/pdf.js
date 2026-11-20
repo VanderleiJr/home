@@ -581,6 +581,8 @@
       // y cresce para cima no PDF; invertemos para ficar como na tela.
       const top = box ? box[3] : 792;
       for (const it of items) it.y = +(top - it.y).toFixed(2);
+      // Largura da página: quem ordena as colunas precisa saber o meio.
+      items.width = box ? box[2] - box[0] : 612;
       return items;
     }
   }
@@ -996,49 +998,52 @@
       const lex = new Lexer(bytes);
       const args = [];
 
+      /*
+        Mostra texto. Um recuo maior que ~0,45 em dentro do TJ não é espaço
+        entre palavras: é o vão entre colunas de uma tabela. Ali o texto
+        é partido em itens separados, cada um com o seu x real, para que
+        as células possam ser lidas depois.
+      */
       const show = (strings) => {
         const f = gs.font;
         if (!f) return;
-        // Matriz de renderização: posição e escala reais do texto na página.
-        const trm = mul(
-          mul([gs.size * gs.Th, 0, 0, gs.size, 0, gs.Ts], tm),
-          gs.ctm,
-        );
-        const scale = Math.hypot(trm[2], trm[3]); // altura efetiva da letra
-        const x0 = trm[4];
-        const y0 = trm[5];
+        const textMatrix = () =>
+          mul(mul([gs.size * gs.Th, 0, 0, gs.size, 0, gs.Ts], tm), gs.ctm);
+        let start = textMatrix(); // matriz de renderização no início do pedaço
         let str = "";
-        let adv = 0; // avanço em unidades de texto
+        const flush = () => {
+          const end = textMatrix();
+          if (str.trim())
+            this.items.push({
+              str,
+              x: +start[4].toFixed(2),
+              y: start[5],
+              w: +(end[4] - start[4]).toFixed(2),
+              size: +Math.hypot(start[2], start[3]).toFixed(2), // altura da letra
+              font: f.name,
+              bold: f.bold,
+              italic: f.italic,
+            });
+          str = "";
+        };
         for (const s of strings) {
           if (typeof s === "number") {
-            // Número no TJ: recuo em milésimos de em. Bem negativo = espaço.
-            const shift = (-s / 1000) * gs.size * gs.Th;
-            if (s < -250 && !str.endsWith(" ")) str += " ";
-            adv += shift;
+            // Número no TJ: recuo em milésimos de em (negativo afasta).
+            if (s < -450) flush();
+            else if (s < -250 && !str.endsWith(" ")) str += " ";
+            tm = mul([1, 0, 0, 1, (-s / 1000) * gs.size * gs.Th, 0], tm);
+            if (!str) start = textMatrix();
             continue;
           }
           for (const { code, len } of f.codes(s)) {
             str += f.text(code);
             const space = len === 1 && code === 32 ? gs.Tw : 0;
-            adv += ((f.width(code) / 1000) * gs.size + gs.Tc + space) * gs.Th;
+            const adv =
+              ((f.width(code) / 1000) * gs.size + gs.Tc + space) * gs.Th;
+            tm = mul([1, 0, 0, 1, adv, 0], tm);
           }
         }
-        tm = mul([1, 0, 0, 1, adv, 0], tm);
-        const end = mul(
-          mul([gs.size * gs.Th, 0, 0, gs.size, 0, gs.Ts], tm),
-          gs.ctm,
-        );
-        if (str.trim() === "" && !str.includes(" ")) return;
-        this.items.push({
-          str,
-          x: +x0.toFixed(2),
-          y: y0,
-          w: +(end[4] - x0).toFixed(2),
-          size: +scale.toFixed(2),
-          font: f.name,
-          bold: f.bold,
-          italic: f.italic,
-        });
+        flush();
       };
 
       for (let t; (t = lex.next()) !== undefined;) {

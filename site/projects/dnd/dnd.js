@@ -13,6 +13,8 @@ const previewText = document.querySelector("[data-preview-text]");
 const progress = document.querySelector("[data-book-progress]");
 const bookMap = document.querySelector("[data-book-map]");
 const bookTree = document.querySelector("[data-book-tree]");
+const classesBox = document.querySelector("[data-classes]");
+const classList = document.querySelector("[data-class-list]");
 let doc = null;
 
 // Intl.NumberFormat com unit: "36,7 MB" formatado no idioma da página.
@@ -63,8 +65,11 @@ async function receive(file) {
       size: formatSize(file.size),
       pages: doc.pageCount,
       ms: Math.round(performance.now() - started),
+      classes: data.classes.length,
+      subclasses: data.classes.reduce((n, c) => n + c.subclasses.length, 0),
     });
     showMap(data.outline);
+    showClasses(data.classes);
     previewPage.max = doc.pageCount;
     preview.hidden = false;
     showPage();
@@ -73,6 +78,108 @@ async function receive(file) {
     progress.hidden = true;
     status.textContent = i18n.t("dnd.readError", { error: error.message });
   }
+}
+
+/*
+  Monta elementos com uma função curta: el("p", { className: "x" }, "texto").
+  Tudo vira nó do DOM com textContent, nunca innerHTML: o texto vem de um
+  PDF, e assim nada nele pode ser interpretado como HTML.
+*/
+function el(tag, props = {}, ...children) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children.flat(Infinity).filter((c) => c != null && c !== false));
+  return node;
+}
+
+// Parágrafo do livro, com o rótulo em negrito ("Duração.") quando houver.
+const paragraph = (p) =>
+  el(
+    "p",
+    {},
+    p.lead ? el("strong", {}, p.lead + " ") : null,
+    p.bullet ? "• " : "",
+    p.text,
+  );
+
+// Característica: <details> com "Nível N: Nome" e o texto dentro.
+const feature = (f) =>
+  el(
+    "details",
+    { className: "feature" },
+    el("summary", {}, f.level ? `${f.level} · ${f.name}` : f.name),
+    f.text.map(paragraph),
+  );
+
+function progressionTable(prog) {
+  return el(
+    "div",
+    { className: "table-wrap" },
+    el(
+      "table",
+      { className: "progression" },
+      el(
+        "thead",
+        {},
+        el(
+          "tr",
+          {},
+          prog.headers.map((h) => el("th", { scope: "col" }, h)),
+        ),
+      ),
+      el(
+        "tbody",
+        {},
+        prog.rows.map((r) =>
+          el(
+            "tr",
+            {},
+            el("td", {}, String(r.level)),
+            el("td", {}, `+${r.proficiency}`),
+            el("td", {}, r.features.join(", ") || "—"),
+            r.values.map((v) => el("td", {}, v)),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Uma ficha resumida por classe: traços, tabela, características e subclasses.
+function showClasses(classes) {
+  const t = i18n.t;
+  classList.replaceChildren(
+    ...classes.map((c) =>
+      el(
+        "details",
+        { className: "field class-card" },
+        el("summary", {}, `${c.name} — d${c.hitDie}`),
+        el("p", { className: "tagline" }, c.tagline),
+        el(
+          "dl",
+          {},
+          c.fields.map((f) => [el("dt", {}, f.label), el("dd", {}, f.value)]),
+        ),
+        c.description.map(paragraph),
+        progressionTable(c.progression),
+        el("h4", {}, t("dnd.features")),
+        c.features.map(feature),
+        el("h4", {}, t("dnd.subclasses")),
+        c.subclasses.map((s) =>
+          el(
+            "details",
+            { className: "feature" },
+            el("summary", {}, s.name),
+            el("p", { className: "tagline" }, s.tagline),
+            s.description.map(paragraph),
+            s.features.map(feature),
+            s.sections.map(feature),
+          ),
+        ),
+      ),
+    ),
+  );
+  document.querySelector("[data-waiting]").hidden = true;
+  classesBox.hidden = false;
 }
 
 // Desenha a árvore de títulos como listas aninhadas (até 2 níveis de fundo).

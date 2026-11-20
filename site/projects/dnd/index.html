@@ -187,10 +187,19 @@
                 </button>
               </li>
             </ol>
-            <p class="field empty" data-i18n="dnd.waiting">
+            <p class="field empty" data-i18n="dnd.waiting" data-waiting>
               ⏳ Carregue o livro para começar.
             </p>
           </fieldset>
+
+          <!--
+            Prévia das classes extraídas, para conferir os dados antes de o
+            assistente usá-los. Cada classe é um <details>: abre sem JS.
+          -->
+          <section class="extracted" hidden data-classes>
+            <h3 data-i18n="dnd.classesTitle">📜 Classes extraídas do livro</h3>
+            <div data-class-list></div>
+          </section>
         </div>
       </section>
     </main>

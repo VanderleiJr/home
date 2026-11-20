@@ -217,12 +217,15 @@
     "home": "🌴 Início",
     "saved": "Dados salvos só neste navegador",
     "reading": "⏳ Lendo {name}…",
-    "opened": "📖 {name} ({size}): {pages} páginas lidas em {ms} ms",
+    "opened": "📖 {name} ({size}): {pages} páginas em {ms} ms · {classes} classes, {subclasses} subclasses",
     "readError": "⚠️ Não consegui ler o PDF: {error}",
     "preview": "🔎 Ver o texto extraído",
     "page": "Página",
     "unknownBook": "⚠️ {name}: versão de livro não reconhecida",
     "progress": "⏳ Lendo página {done} de {total}…",
-    "map": "🗺 Mapa do livro"
+    "map": "🗺 Mapa do livro",
+    "classesTitle": "📜 Classes extraídas do livro",
+    "features": "Características",
+    "subclasses": "Subclasses"
   }
 }
