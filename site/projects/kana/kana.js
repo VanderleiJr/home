@@ -148,10 +148,11 @@ for (const level of LEVELS) {
   O que fica salvo:
   - journey: estrelas de cada nível da jornada (nunca é apagado);
   - best: recordes dos modos livres;
-  - settings: as últimas escolhas do menu.
+  - settings: as últimas escolhas do menu;
+  - minimized: quais janelas de alfabeto estão minimizadas.
 */
 const STORE_KEY = "kana:progress";
-let store = { journey: {}, best: {}, settings: null };
+let store = { journey: {}, best: {}, settings: null, minimized: [] };
 
 try {
   const saved = JSON.parse(localStorage.getItem(STORE_KEY));
@@ -202,8 +203,18 @@ const typing = $(".typing");
 const typingInput = typing.querySelector("input");
 const groupBoxes = menu.querySelectorAll('[name="groups"]');
 
+/*
+  Durante a partida as tabelas de kana ficam borradas (sem "cola"): uma
+  classe no <html> liga o blur no CSS, e "inert" tira as janelas do
+  teclado e dos leitores de tela enquanto isso.
+*/
+const kanaWindows = document.querySelectorAll(".win-kana");
+
 function show(screen) {
   for (const s of [menu, game, end]) s.hidden = s !== screen;
+  const playing = screen === game;
+  document.documentElement.classList.toggle("is-playing", playing);
+  for (const win of kanaWindows) win.inert = playing;
 }
 
 // ---------- Configurações do menu ----------
@@ -611,6 +622,7 @@ document.addEventListener("click", (event) => {
   if (action === "again") start(session.mode, session.levelIndex);
   if (action === "next-level") start("journey", session.levelIndex + 1);
   if (action === "menu") show(menu);
+  if (action === "minimize") minimize(target.closest(".win-kana"), true);
 });
 
 // ---------- Janela da jornada: o mapa de níveis ----------
@@ -676,8 +688,100 @@ function renderJourney() {
     `${t("level")} ${current + 1} · ${levelName(LEVELS[current])}`;
 }
 
+// ---------- Janelas dos alfabetos: tabelas de consulta ----------
+
+/*
+  Cada grupo vira uma grade com uma coluna por vogal (5 nos básicos e
+  dakuten, 3 nos combinados). As casas vazias ("-") continuam lá, só
+  que invisíveis: é isso que mantém や ゆ よ nas colunas de a, u e o.
+*/
+function renderTable(win) {
+  const script = win.dataset.script;
+  const sections = Object.entries(ROWS).map(([group, rows]) => {
+    const section = document.createElement("section");
+    const title = document.createElement("h3");
+    title.textContent = t(`groups.${group}`);
+    const grid = document.createElement("div");
+    grid.className = "kana-grid";
+    // Variável CSS por elemento: o mesmo CSS serve para 5 ou 3 colunas.
+    grid.style.setProperty("--columns", rows[0][0].split(" ").length);
+    for (const [kanaRow, romajiRow] of rows) {
+      const romaji = romajiRow.split(" ");
+      kanaRow.split(" ").forEach((kana, i) => {
+        const cell = document.createElement("p");
+        cell.className = "kana-cell";
+        if (kana === "-") {
+          cell.classList.add("is-empty");
+          cell.ariaHidden = "true";
+        } else {
+          const glyph = script === "katakana" ? toKatakana(kana) : kana;
+          cell.innerHTML = `<span lang="ja">${glyph}</span> <small>${romaji[i]}</small>`;
+        }
+        grid.append(cell);
+      });
+    }
+    section.append(title, grid);
+    return section;
+  });
+  win.querySelector(".kana-table").replaceChildren(...sections);
+}
+
+/*
+  Minimizar = esconder a janela com o atributo hidden e deixar só o
+  botão dela na barra de tarefas, como no Windows 98. aria-pressed
+  diz a leitores de tela se a janela está aberta ou não.
+*/
+const tasks = $(".tasks");
+
+function minimize(win, minimized) {
+  win.hidden = minimized;
+  const script = win.dataset.script;
+  store.minimized = store.minimized.filter((s) => s !== script);
+  if (minimized) store.minimized.push(script);
+  save();
+  updateTasks();
+}
+
+function updateTasks() {
+  const buttons = [...kanaWindows].map((win) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn task";
+    button.textContent = win.querySelector(".titlebar-text").textContent;
+    button.setAttribute("aria-pressed", String(!win.hidden));
+    button.addEventListener("click", () => minimize(win, !win.hidden));
+    return button;
+  });
+  tasks.replaceChildren(...buttons);
+}
+
+// Restaura as janelas que estavam minimizadas na última visita.
+for (const win of kanaWindows) {
+  win.hidden = store.minimized.includes(win.dataset.script);
+}
+
 // Só monta o que tem texto depois que a tradução estiver pronta.
 i18n.ready.then(() => {
   renderJourney();
   showRecords();
+  kanaWindows.forEach(renderTable);
+  updateTasks();
 });
+
+// ---------- Relógio da bandeja ----------
+
+// toLocaleTimeString formata a hora no idioma escolhido (i18n.lang).
+const clock = $(".clock");
+
+function updateClock() {
+  const now = new Date();
+  clock.textContent = now.toLocaleTimeString(i18n.lang, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  clock.dateTime = now.toISOString();
+}
+
+// O idioma só é conhecido depois que o i18n.js termina de carregar.
+i18n.ready.then(updateClock);
+setInterval(updateClock, 15_000);

@@ -670,3 +670,21 @@ i18n.ready.then(() => {
   renderJourney();
   showRecords();
 });
+
+// ---------- Relógio da bandeja ----------
+
+// toLocaleTimeString formata a hora no idioma escolhido (i18n.lang).
+const clock = $(".clock");
+
+function updateClock() {
+  const now = new Date();
+  clock.textContent = now.toLocaleTimeString(i18n.lang, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  clock.dateTime = now.toISOString();
+}
+
+// O idioma só é conhecido depois que o i18n.js termina de carregar.
+i18n.ready.then(updateClock);
+setInterval(updateClock, 15_000);

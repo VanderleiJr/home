@@ -625,6 +625,7 @@ input[type="checkbox"] {
 .tray {
   display: flex;
   align-items: center;
+  gap: 10px;
   height: 100%;
   padding: 0 10px;
   box-shadow: var(--bevel-in);

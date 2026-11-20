@@ -102,6 +102,40 @@ a {
   flex: 0 1 400px;
 }
 
+.win-kana {
+  flex: 0 1 446px;
+  position: relative;
+}
+
+/*
+  Sem cola: durante a partida as tabelas de kana ficam borradas. O blur
+  é um filter no conteúdo; o aviso fica por cima, centralizado (grid com
+  place-items), e só aparece com a classe .is-playing no <html>.
+*/
+.win-kana .kana-table {
+  transition: filter 0.3s;
+}
+
+.is-playing .win-kana .kana-table {
+  filter: blur(12px) grayscale(0.4);
+}
+
+.table-hidden {
+  display: none;
+}
+
+.is-playing .table-hidden {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  margin: 0;
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+}
+
 .titlebar {
   display: flex;
   align-items: center;
@@ -193,6 +227,27 @@ a {
 
 .btn-close::after {
   transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/*
+  Minimizar desenhado com CSS (não com "_"): o caractere muda de altura
+  conforme a fonte de cada aparelho; uma barrinha posicionada, não.
+*/
+.btn-minimize {
+  position: relative;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+}
+
+.btn-minimize::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 2px;
+  background: #000;
 }
 
 kbd {
@@ -585,6 +640,29 @@ input[type="checkbox"] {
   font-weight: bold;
 }
 
+/* Botões das janelas de alfabeto: afundados (bevel-in) quando abertas. */
+.tasks {
+  display: flex;
+  gap: 4px;
+  height: 100%;
+  min-width: 0;
+}
+
+.task {
+  flex: 0 1 150px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.task[aria-pressed="true"] {
+  font-weight: bold;
+  background: #e0e0e0;
+  box-shadow: var(--bevel-in);
+}
+
 .taskbar-hint {
   flex: 1;
   overflow: hidden;
@@ -596,9 +674,61 @@ input[type="checkbox"] {
 .tray {
   display: flex;
   align-items: center;
+  gap: 10px;
   height: 100%;
   padding: 0 10px;
   box-shadow: var(--bevel-in);
+}
+
+/* ---------- Tabelas de kana ---------- */
+
+.kana-table {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.kana-table h3 {
+  margin: 10px 0 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: #fff;
+  background: var(--purple);
+}
+
+.kana-table section:first-child h3 {
+  margin-top: 0;
+}
+
+/* --columns vem do JS: 5 colunas (vogais) ou 3 nos combinados. */
+.kana-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 1fr);
+  gap: 4px;
+}
+
+.kana-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 4px 0;
+  background: #fff;
+  box-shadow: var(--bevel-in);
+}
+
+.kana-cell span {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.kana-cell small {
+  color: #444;
+}
+
+/* Casa vazia: ocupa o lugar na grade, mas não desenha nada. */
+.kana-cell.is-empty {
+  background: none;
+  box-shadow: none;
 }
 
 /* ---------- Celular ---------- */
@@ -615,9 +745,31 @@ input[type="checkbox"] {
     height: 3px;
   }
 
+  .titlebar .btn-minimize {
+    width: 32px;
+    height: 26px;
+  }
+
+  .btn-minimize::before {
+    left: 10px;
+    bottom: 7px;
+    width: 12px;
+    height: 3px;
+  }
+
   .win-game,
-  .win-journey {
+  .win-journey,
+  .win-kana {
     flex-basis: 100%;
+  }
+
+  /* Sem espaço para a dica: os botões das janelas ficam no lugar dela. */
+  .taskbar-hint {
+    display: none;
+  }
+
+  .tasks {
+    flex: 1;
   }
 }
 
