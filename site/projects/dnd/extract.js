@@ -204,6 +204,10 @@
   // porque não está no fim da linha.
   DND.join = (a, b) => {
     if (!a) return b;
+    // Pontuação colada na palavra anterior: "Arcana" + "." vira "Arcana.".
+    if (/^[.,;:!?)]/.test(b)) return a + b;
+    // Hífen de quebra que veio num pedaço sozinho ("Vi" "-" "rotes").
+    if (b === "-" && /[a-zà-öø-ÿ]$/i.test(a)) return a + "-";
     if (/[a-zà-öø-ÿ]-$/i.test(a) && /^[a-zà-öø-ÿ]/.test(b))
       return a.slice(0, -1) + b;
     return a + " " + b;
@@ -225,6 +229,20 @@
     let cur = null;
     let lastCol = null;
     let prevX = null;
+    let prevLine = null;
+    // Linha que abre com um rótulo em negrito ("Gnomo das Rochas.") é
+    // parágrafo novo mesmo sem recuo — desde que a linha anterior não
+    // termine em negrito (aí seria um rótulo longo quebrado em duas).
+    const leadStart = (l) => {
+      const its = (l.items || []).filter((it) => it.str.trim());
+      if (!its[0]?.bold || prevLine?.items?.at(-1)?.bold) return false;
+      const run = [];
+      for (const it of its) {
+        if (!it.bold) break;
+        run.push(it.str);
+      }
+      return /[.:]$/.test(run.join("").trim()) && run.length < its.length;
+    };
     for (const l of lines) {
       const offset = l.x - margins.get(col(l));
       // Recuo grande repetido em linhas seguidas não é parágrafo novo: é o
@@ -235,14 +253,23 @@
       const bullet = /^[•●▪]/.test(l.text);
       const newCol = col(l) !== lastCol;
       lastCol = col(l);
-      if (!cur || bullet || (indent && !(cur.bullet && !newCol))) {
+      const labeled = leadStart(l);
+      prevLine = l;
+      if (
+        !cur ||
+        bullet ||
+        labeled ||
+        (indent && !(cur.bullet && !newCol))
+      ) {
         cur = { text: bullet ? l.text.replace(/^[•●▪]\s*/, "") : l.text };
         if (bullet) cur.bullet = true;
         // Rótulo: os primeiros pedaços em negrito da linha ("Duração.").
         const lead = [];
+        let italic = false;
         for (const it of l.items || []) {
           if (!it.bold) break;
           lead.push(it.str);
+          italic ||= it.italic;
         }
         const leadText = lead
           .join("")
@@ -255,6 +282,9 @@
           leadText.length < cur.text.length
         ) {
           cur.lead = leadText;
+          // Negrito itálico (traço, benefício) × negrito reto (opção dentro
+          // de um traço, como as linhagens do Gnomo): quem lê decide.
+          if (italic) cur.leadItalic = true;
           cur.text = cur.text.slice(leadText.length).trim();
         }
         out.push(cur);
@@ -289,10 +319,14 @@
     const header = [];
     let i = 0;
     for (; i < all.length && all[i].bold; i++) {
-      if (header.length && all[i].y - header[header.length - 1].y > 30) break;
+      const prev = header[header.length - 1];
+      if (prev && all[i].y - prev.y > 30) break;
+      // Do tamanho do título (ou maior) = título de outra tabela ao lado.
+      if (all[i].size >= title.size) continue;
       header.push(all[i]);
     }
     if (!header.length) return null;
+    const headSize = Math.max(...header.map((l) => l.size));
     const hItems = header.flatMap((l) =>
       l.items.map((it) => ({ ...it, y: l.y })),
     );
@@ -307,6 +341,8 @@
       const l = all[i];
       if (l.bold || l.x > maxX || l.x < minX) continue;
       if (l.y - lastY > l.size * maxGap) break;
+      // Letra menor que a do cabeçalho: nota de rodapé ("*Primordial…"), fim.
+      if (l.size < headSize - 1.5) break;
       lastY = l.y;
       used.push(l);
       const c = clusters.find((c) => Math.abs(c.y - l.y) < 2);

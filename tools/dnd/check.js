@@ -127,14 +127,109 @@ function expect(label, ok, detail = "") {
     );
     for (const a of aliases) console.log(`      ${a}`);
   }
-  const show = args[args.indexOf("--classe") + 1];
-  if (flags.has("--classe")) {
-    const c = classes.find((c) => DND.norm(c.name) === DND.norm(show));
+  // ---------- Origens e talentos ----------
+  const skills = data.skills || [];
+  const feats = data.feats || [];
+  const languages = data.languages || [];
+  console.log("\n🧭 Origens");
+  expect(
+    "18 perícias com atributo",
+    skills.length === 18 && skills.every((s) => s.ability),
+    `${skills.length}`,
+  );
+  expect(
+    "19 idiomas (10 comuns + 9 raros)",
+    languages.length === 19 && languages.filter((l) => l.rare).length === 9,
+    `${languages.length}`,
+  );
+  const bgs = data.backgrounds || [];
+  expect("16 antecedentes", bgs.length === 16, `${bgs.length}`);
+  for (const b of bgs) {
+    const problems = [];
+    if (b.abilities?.length !== 3) problems.push("atributos");
+    // As referências precisam apontar para itens que existem.
+    if (!feats.some((f) => f.id === b.feat?.id && f.category === "origin"))
+      problems.push(`talento "${b.feat?.name}" não achado`);
+    if (
+      b.skills?.length !== 2 ||
+      !b.skills.every((id) => skills.some((s) => s.id === id))
+    )
+      problems.push(`perícias ${b.skills}`);
+    if (!b.tool) problems.push("ferramenta");
+    if (b.equipment?.length !== 2) problems.push("equipamento A/B");
+    if (!b.description.length) problems.push("sem descrição");
+    expect(
+      `${b.name.padEnd(11)} ${b.abilities?.join("/")} · ${b.feat?.name}${b.feat?.option ? ` (${b.feat.option})` : ""} · ${b.skills?.join(", ")}`,
+      problems.length === 0,
+      problems.join(" | "),
+    );
+  }
+  const species = data.species || [];
+  expect("10 espécies", species.length === 10, `${species.length}`);
+  for (const s of species) {
+    const problems = [];
+    if (!s.creatureType) problems.push("tipo");
+    if (!s.sizes?.length) problems.push("tamanho");
+    if (!s.speed) problems.push("deslocamento");
+    if (s.traits.length < 3) problems.push(`${s.traits.length} traços`);
+    if (s.tables?.length)
+      problems.push(`tabela solta: ${s.tables.map((t) => t.title)}`);
+    if (!s.description.length) problems.push("sem descrição");
+    const opts = s.traits
+      .filter((t) => t.options)
+      .map((t) => `${t.name} (${t.options.length})`);
+    expect(
+      `${s.name.padEnd(10)} ${s.sizes?.join("/")} · ${s.speed} m · ${s.traits.length} traços${opts.length ? ` · escolhas: ${opts.join(", ")}` : ""}`,
+      problems.length === 0,
+      problems.join(" | "),
+    );
+  }
+
+  console.log("\n🎖  Talentos");
+  const count = (cat) => feats.filter((f) => f.category === cat).length;
+  for (const [cat, label, n] of [
+    ["origin", "de origem", 10],
+    ["general", "gerais", 42],
+    ["fighting-style", "de estilo de luta", 10],
+    ["epic-boon", "de dádiva épica", 12],
+  ])
+    expect(`${n} talentos ${label}`, count(cat) === n, `${count(cat)}`);
+  const noText = feats.filter((f) => !f.text.length).map((f) => f.name);
+  expect("todo talento tem texto", !noText.length, noText.join(", "));
+  // Geral exige nível 4; dádiva épica, 19; estilo de luta, a característica.
+  const badPre = feats.filter(
+    (f) =>
+      (f.category === "general" && f.prerequisite?.level !== 4) ||
+      (f.category === "epic-boon" && f.prerequisite?.level !== 19) ||
+      (f.category === "fighting-style" && !f.prerequisite?.other.length),
+  );
+  expect(
+    "pré-requisitos lidos",
+    !badPre.length,
+    badPre.map((f) => f.name).join(", "),
+  );
+  console.log(
+    `   ${feats.filter((f) => f.asi).length} com aumento de atributo · ${feats.filter((f) => f.repeatable).length} repetíveis · ${feats.filter((f) => f.prerequisite?.abilities).length} exigem atributo mínimo`,
+  );
+
+  // Despejo de um item: --classe Nome, --antecedente Nome, --especie Nome, --talento Nome.
+  const dumps = {
+    "--classe": classes,
+    "--antecedente": bgs,
+    "--especie": species,
+    "--talento": feats,
+  };
+  for (const [flag, items] of Object.entries(dumps)) {
+    if (!flags.has(flag)) continue;
+    const name = args[args.indexOf(flag) + 1];
+    const item = items.find((c) => DND.norm(c.name) === DND.norm(name));
     console.log(
       JSON.stringify(
-        c,
+        item,
         (k, v) =>
-          k === "description" || k === "text" ? `[${v.length} parágrafos]` : v,
+          k === "description" || (k === "text" && Array.isArray(v))
+            ? `[${v.length} parágrafos]`
+            : v,
         2,
       ),
     );

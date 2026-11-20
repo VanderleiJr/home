@@ -78,12 +78,14 @@
   const isTableTitle = (l) => l.font === "ScalaSansCaps-Bold" && l.size === 11;
   const TABLE_FONT = /^ScalaSans/;
   // Linhas que nunca são texto corrido: rodapé, créditos de arte (letra
-  // miúda), títulos decorativos, frase de efeito e linhas de tabela.
+  // miúda), títulos decorativos, frase de efeito, legendas de
+  // ilustração (DaiVernon) e linhas de tabela.
   const isNoise = (l) =>
     l.inTable ||
     isFooter(l) ||
     l.size < 7 ||
     l.font === TITLE_FONT ||
+    l.font.startsWith("DaiVernon") ||
     l.font === "TTJenevers-MediumItalic";
 
   /*
@@ -351,6 +353,341 @@
     return classes;
   }
 
+  // ---------- Origens: antecedentes, espécies, idiomas e perícias ----------
+
+  const chapterOf = (outline, title) =>
+    outline.children.find((c) => DND.norm(c.title) === DND.norm(title));
+  const titleLine = (book, node) => book.lines[node.index];
+  // "Talento: Sortudo (veja o capítulo 5)": a remissão não é dado.
+  const noRef = (s) => s.replace(/\s*\(veja [^)]*\)/i, "").trim();
+  const list = (s) =>
+    s
+      .split(/,|\be\b/)
+      .map((x) => x.trim().replace(/\.$/, ""))
+      .filter(Boolean);
+
+  // "Iniciado em Magia (Clérigo)" → { id, name, option: "Clérigo" }.
+  function featRef(text) {
+    const m = /^(.+?)\s*\(([^)]+)\)$/.exec(noRef(text));
+    const name = m ? m[1] : noRef(text);
+    return { id: slug(name), name, ...(m && { option: m[2] }) };
+  }
+
+  /*
+    Antecedentes: cada página traz dois, e cada um ocupa uma faixa da
+    página — atributos à esquerda, história à direita, na mesma altura.
+    Por isso o recorte é geométrico (do título até o próximo título), não
+    pela ordem de leitura, que leria a coluna esquerda inteira primeiro.
+  */
+  function extractBackgrounds(book, outline) {
+    const chapter = chapterOf(outline, "Origens dos Personagens");
+    if (!chapter) return [];
+    const nodes = chapter.children;
+    const start = nodes.findIndex((n) =>
+      /^descricoes dos antecedentes/.test(DND.norm(n.title)),
+    );
+    if (start < 0) return [];
+    const out = [];
+    for (const node of nodes.slice(start + 1)) {
+      if (/^descricoes/.test(DND.norm(node.title))) break;
+      const head = titleLine(book, node);
+      const page = book.pages[node.page - 1].lines;
+      const nextY = Math.min(
+        ...page
+          .filter(
+            (l) => l.font === SECTION_FONT && l.size === 18 && l.y > head.y,
+          )
+          .map((l) => l.y),
+      );
+      const band = page.filter(
+        (l) => l !== head && l.y > head.y && l.y < nextY && !isNoise(l),
+      );
+      const fields = DND.labeled(band.filter((l) => TABLE_FONT.test(l.font)));
+      const bg = {
+        id: slug(node.title),
+        name: node.title,
+        source: "phb2024",
+        page: node.page,
+        fields,
+        description: DND.paragraphs(band.filter((l) => !l.inTable)),
+      };
+      for (const { label, value } of fields) {
+        const k = DND.norm(label);
+        if (k.startsWith("valores de atributo"))
+          bg.abilities = abilitiesIn(value);
+        else if (k.startsWith("talento")) bg.feat = featRef(value);
+        else if (k.includes("pericia")) bg.skills = list(value).map(slug);
+        else if (k.includes("ferramenta")) bg.tool = noRef(value);
+        else if (k.startsWith("equipamento"))
+          bg.equipment = parseEquipment(value);
+      }
+      out.push(bg);
+    }
+    return out;
+  }
+
+  /*
+    Tabela com as colunas repetidas lado a lado para caber na página
+    ("Dragão | Tipo de Dano | Dragão | Tipo de Dano"): vira uma só,
+    com o dobro de linhas.
+  */
+  function unfold(table) {
+    const n = table.columns.length;
+    const half = n / 2;
+    if (
+      n % 2 ||
+      table.columns.slice(0, half).join("|") !==
+        table.columns.slice(half).join("|")
+    )
+      return table;
+    const rows = [
+      ...table.rows.map((r) => r.slice(0, half)),
+      ...table.rows.map((r) => r.slice(half)),
+    ].filter((r) => r[0]);
+    return { ...table, columns: table.columns.slice(0, half), rows };
+  }
+
+  // Linha de tabela → opção: { name, values: { "Nível 3": "…", … } }.
+  const optionsOf = (table) =>
+    table.rows.map((r) => ({
+      name: r[0],
+      values: Object.fromEntries(
+        table.columns.slice(1).map((c, k) => [c, r[k + 1]]),
+      ),
+    }));
+
+  const SIZES = /\b(Miúdo|Minúsculo|Pequeno|Médio|Grande)\b/g;
+
+  /*
+    Espécie: título com a descrição, filhos com as variantes (Altos
+    Elfos, Drow…) e um "Traços de X" com o bloco rotulado (tipo, tamanho,
+    deslocamento) e os traços. Rótulo negrito-itálico abre um traço;
+    rótulo negrito reto é uma opção dentro do traço anterior (as
+    linhagens do Gnomo, as ancestralidades do Golias). Tabelas dentro
+    dos traços (Linhagem Élfica…) viram as opções do traço que as cita.
+  */
+  function extractSpecies(book, outline) {
+    const chapter = chapterOf(outline, "Origens dos Personagens");
+    const section = chapter?.children.find((n) =>
+      /^descricoes das especies/.test(DND.norm(n.title)),
+    );
+    if (!section) return [];
+    return section.children.map((node) => {
+      const traitsNode = node.children.find((c) => /^Traços/.test(c.title));
+      const range = traitsNode
+        ? DND.body(book, traitsNode, { own: false })
+        : [];
+      const tables = range
+        .filter((l) => isTableTitle(l) && !l.inTable)
+        .map((l) => DND.table(book, l, { font: TABLE_FONT }))
+        .filter(Boolean)
+        .map(unfold);
+      const lines = range.filter((l) => !isNoise(l));
+      const head = lines.filter((l) => TABLE_FONT.test(l.font));
+      const fields = DND.labeled(head);
+      const sp = {
+        id: slug(node.title),
+        name: node.title,
+        source: "phb2024",
+        page: node.page,
+        description: paragraphs(book, node, true),
+        variants: node.children
+          .filter((c) => c !== traitsNode)
+          .map((c) => ({
+            id: slug(c.title),
+            name: c.title,
+            description: paragraphs(book, c, false),
+          })),
+        fields,
+        traits: [],
+      };
+      for (const { label, value } of fields) {
+        const k = DND.norm(label);
+        if (k.startsWith("tipo")) sp.creatureType = value;
+        else if (k.startsWith("tamanho"))
+          sp.sizes = [...value.replace(/\([^)]*\)/g, "").matchAll(SIZES)].map(
+            (m) => m[1],
+          );
+        else if (k.startsWith("deslocamento"))
+          sp.speed = Number(
+            (/[\d,]+/.exec(value) || ["0"])[0].replace(",", "."),
+          );
+      }
+      let trait = null;
+      for (const p of DND.paragraphs(lines.filter((l) => !l.inTable))) {
+        if (p.lead && p.leadItalic) {
+          trait = { name: p.lead.replace(/\.$/, ""), text: [p] };
+          sp.traits.push(trait);
+        } else if (p.lead && trait) {
+          (trait.options ||= []).push({
+            name: p.lead.replace(/\.$/, ""),
+            text: [p],
+          });
+        } else if (trait) {
+          // Parágrafo sem rótulo: continua a opção (ou o traço) anterior.
+          (trait.options?.at(-1) || trait).text.push(p);
+        }
+      }
+      for (const t of tables) {
+        const n = DND.norm(t.title);
+        const owner =
+          sp.traits.find((tr) => DND.norm(tr.name) === n) ||
+          sp.traits.find((tr) =>
+            tr.text.some((p) => DND.norm(p.text).includes(n)),
+          );
+        if (owner) {
+          owner.table = t;
+          owner.options = optionsOf(t);
+        } else (sp.tables ||= []).push(t);
+      }
+      return sp;
+    });
+  }
+
+  // Tabela achada pelo título em qualquer lugar do livro.
+  const tableNamed = (book, title) => {
+    const l = book.lines.find(
+      (l) => isTableTitle(l) && DND.norm(l.text) === DND.norm(title),
+    );
+    return l && DND.table(book, l, { font: TABLE_FONT });
+  };
+
+  // Idiomas (capítulo 2): o "*" de nota de rodapé sai do nome.
+  function extractLanguages(book) {
+    const out = [];
+    for (const [title, rare] of [
+      ["Idiomas Comuns", false],
+      ["Idiomas Raros", true],
+    ]) {
+      const t = tableNamed(book, title);
+      if (!t) continue;
+      const col = (name) => t.columns.findIndex((c) => DND.norm(c) === name);
+      const [ci, co, cr] = [col("idioma"), col("origem"), col("1d12")];
+      for (const r of t.rows) {
+        const name = r[ci].replace(/\*$/, "");
+        out.push({
+          id: slug(name),
+          name,
+          origin: r[co],
+          rare,
+          ...(cr >= 0 && { roll: r[cr] }),
+        });
+      }
+    }
+    return out;
+  }
+
+  // Perícias (capítulo 1): nome → atributo, para o motor de regras.
+  function extractSkills(book) {
+    const t = tableNamed(book, "Perícias");
+    if (!t) return [];
+    return t.rows.map((r) => ({
+      id: slug(r[0]),
+      name: r[0],
+      ability: abilitiesIn(r[1])[0],
+    }));
+  }
+
+  // ---------- Talentos ----------
+
+  const FEAT_CATEGORIES = {
+    "talentos de origem": "origin",
+    "talentos gerais": "general",
+    "talentos de estilo de luta": "fighting-style",
+    "talentos de dadiva epica": "epic-boon",
+  };
+
+  /*
+    "Nível 4 ou superior, Força ou Destreza 13 ou superior" →
+    { level: 4, abilities: { any: ["str","dex"], min: 13 }, other: [] }.
+    O que não for nível nem atributo (treinamento com armadura,
+    característica de conjuração…) fica em "other", como texto.
+  */
+  function parsePrerequisite(text) {
+    const pre = { text };
+    let rest = text;
+    const lv = /Nível (\d+)(?: ou superior)?/i.exec(rest);
+    if (lv) {
+      pre.level = Number(lv[1]);
+      rest = rest.replace(lv[0], "");
+    }
+    const ab =
+      /((?:Força|Destreza|Constituição|Inteligência|Sabedoria|Carisma)(?:,\s*|\s+ou\s+|\s+e\s+)?)+\s*(\d+)(?: ou superior)?/i.exec(
+        rest,
+      );
+    if (ab) {
+      pre.abilities = {
+        [/\se\s/.test(ab[0]) ? "all" : "any"]: abilitiesIn(ab[0]),
+        min: Number(ab[2]),
+      };
+      rest = rest.replace(ab[0], "");
+    }
+    pre.other = rest
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return pre;
+  }
+
+  // "Aumente seu valor de Força ou Destreza em 1, até no máximo 20."
+  function parseAsi(text) {
+    const from = abilitiesIn(text);
+    return {
+      from: from.length ? from : Object.values(ABILITIES),
+      amounts: [...text.matchAll(/\bem (\d)\b/g)].map((m) => Number(m[1])),
+      max: Number((/máximo (?:de )?(\d+)/.exec(text) || [, 20])[1]),
+    };
+  }
+
+  function extractFeats(book, outline) {
+    const chapter = chapterOf(outline, "Talentos");
+    const section = chapter?.children.find((n) =>
+      /^descricoes dos talentos/.test(DND.norm(n.title)),
+    );
+    if (!section) return [];
+    const out = [];
+    for (const group of section.children) {
+      const category = FEAT_CATEGORIES[DND.norm(group.title)];
+      if (!category) continue; // "Partes de um Talento" etc.: explicação
+      for (const node of group.children) {
+        const body = DND.body(book, node, { own: false });
+        // Tabelas primeiro (Fabricação Rápida…), para não virarem texto.
+        const tables = body
+          .filter((l) => isTableTitle(l) && !l.inTable)
+          .map((l) => DND.table(book, l, { font: TABLE_FONT }))
+          .filter(Boolean);
+        const lines = body.filter((l) => !isNoise(l));
+        // Linha(s) em itálico logo abaixo do título: categoria e pré-requisito.
+        let k = 0;
+        let kind = "";
+        for (; k < lines.length && lines[k].italic && !lines[k].bold; k++)
+          kind = DND.join(kind, lines[k].text);
+        const pre = /\(Pré-requisito:\s*(.+)\)$/.exec(kind);
+        const text = DND.paragraphs(lines.slice(k));
+        const benefits = text.filter((p) => p.lead);
+        const asiP = text.find(
+          (p) =>
+            /^aumento no valor de atributo/.test(DND.norm(p.lead || "")) ||
+            /^Aumente/.test(p.text),
+        );
+        out.push({
+          id: slug(node.title),
+          name: node.title,
+          source: "phb2024",
+          page: node.page,
+          category,
+          categoryName: kind.replace(/\s*\(Pré-requisito.*$/, ""),
+          ...(pre && { prerequisite: parsePrerequisite(pre[1]) }),
+          repeatable: benefits.some((p) => /^repetivel/.test(DND.norm(p.lead))),
+          ...(asiP && { asi: parseAsi(asiP.text) }),
+          text,
+          ...(tables.length && { tables }),
+        });
+      }
+    }
+    return out;
+  }
+
   DND.registerSource({
     id: "phb2024",
     name: "Livro do Jogador (2024)",
@@ -362,7 +699,7 @@
     tocPages: [9],
     skip: isFooter,
 
-    // As próximas etapas acrescentam origens, talentos, magias e equipamento.
+    // As próximas etapas acrescentam magias e equipamento.
     extract(book) {
       fixDropCaps(book);
       const outline = DND.outline(book, { headings, skip: isFooter });
@@ -372,6 +709,11 @@
         outline,
         toc: DND.parseToc(book, this.tocPages),
         classes: extractClasses(book, outline),
+        backgrounds: extractBackgrounds(book, outline),
+        species: extractSpecies(book, outline),
+        feats: extractFeats(book, outline),
+        languages: extractLanguages(book),
+        skills: extractSkills(book),
       };
     },
   });
