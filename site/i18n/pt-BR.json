@@ -353,7 +353,8 @@
       "needLand": "escolha o terreno",
       "needFeatList": "escolha a lista de magias de {name}",
       "overGold": "as compras passaram do ouro",
-      "untrained": "sem treinamento em {name}"
+      "untrained": "sem treinamento em {name}",
+      "infoAbout": "Sobre {name}"
     },
     "ability": {
       "str": "Força",

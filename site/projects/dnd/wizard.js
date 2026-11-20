@@ -479,7 +479,7 @@ const Wizard = (() => {
     );
   }
 
-  // Texto do livro só sob demanda: um <details> que abre sem JS.
+  // Texto do livro só sob demanda, numa janela à parte (veja info()).
   const paragraph = (p) =>
     el(
       "p",
@@ -488,15 +488,54 @@ const Wizard = (() => {
       p.bullet ? "• " : "",
       p.text,
     );
-  function more(paragraphs, label = t("details")) {
+  /*
+    Botão ⓘ que abre o texto numa janela própria (a .win-info do HTML),
+    em vez de expandir dentro da etapa: assim o criador não muda de
+    tamanho a cada clique. A janela é uma .window comum, então o
+    desktop.js já cuida de arrastar, trazer para a frente e fechar.
+  */
+  function more(title, paragraphs, label = `ⓘ ${t("details")}`) {
     if (!paragraphs?.length) return null;
     return el(
-      "details",
-      { className: "w-more" },
-      el("summary", {}, label),
-      paragraphs.map(paragraph),
+      "button",
+      {
+        type: "button",
+        className: "w-info-btn",
+        title: t("infoAbout", { name: title }),
+        "aria-label": t("infoAbout", { name: title }),
+        "aria-haspopup": "dialog",
+        onclick: (e) => openInfo(title, paragraphs, e.currentTarget),
+      },
+      label,
     );
   }
+
+  let infoOpener = null;
+  function openInfo(title, paragraphs, opener) {
+    const win = document.querySelector("[data-info]");
+    win.querySelector("[data-info-title]").textContent = title;
+    const body = win.querySelector("[data-info-body]");
+    body.replaceChildren(...paragraphs.map(paragraph));
+    body.scrollTop = 0;
+    infoOpener = opener;
+    desktop.open(win);
+    // Foco no ✕: quem usa teclado já está "dentro" da janela.
+    win.querySelector("[data-info-close]").focus();
+  }
+
+  // Ao fechar (✕ ou Esc), o foco volta ao ⓘ que abriu a janela.
+  function closeInfo() {
+    const win = document.querySelector("[data-info]");
+    if (win.hidden) return;
+    desktop.close(win);
+    infoOpener?.isConnected && infoOpener.focus();
+  }
+  document.querySelector("[data-info-close]")?.addEventListener("click", () => {
+    infoOpener?.isConnected && infoOpener.focus();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeInfo();
+  });
 
   const signed = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
   const abilityName = (a) => i18n.t(`dnd.ability.${a}`);
@@ -571,7 +610,7 @@ const Wizard = (() => {
             ]
           : null,
       ),
-      more(cl.description),
+      more(cl.name, cl.description),
       checks(
         t("classSkills"),
         skillPool.map((id) => {
@@ -639,7 +678,7 @@ const Wizard = (() => {
           el("dt", {}, t("tools")),
           el("dd", {}, bg.tool || "—"),
         ),
-        more(bg.description),
+        more(bg.name, bg.description),
         bonusPicker(bg),
         ...featProficiencies(d, "bg"),
       );
@@ -674,7 +713,7 @@ const Wizard = (() => {
           el("dt", {}, t("speed")),
           el("dd", {}, t("meters", { n: sp.speed })),
         ),
-        more(sp.description),
+        more(sp.name, sp.description),
       );
       if (sp.sizes.length > 1)
         out.push(
@@ -701,7 +740,7 @@ const Wizard = (() => {
                   { id: `trait-${R.norm(tr.name).replace(/\W+/g, "-")}` },
                 )
               : null,
-            more(tr.text),
+            more(tr.name, tr.text, "ⓘ"),
           ),
         );
         if (tr.grants?.feat)
@@ -865,7 +904,7 @@ const Wizard = (() => {
           name: key.replace(":", "-"),
         },
       ),
-      more(f.feat.text),
+      more(f.feat.name, f.feat.text),
     ];
   }
 
@@ -1063,7 +1102,7 @@ const Wizard = (() => {
             ),
           ),
         ),
-        d.sub ? more(d.sub.description) : null,
+        d.sub ? more(d.sub.name, d.sub.description) : null,
       );
     else
       out.push(
@@ -1108,7 +1147,7 @@ const Wizard = (() => {
                 t("checkPre", { text: feat.prerequisite.other.join(", ") }),
               )
             : null,
-          feat ? more(feat.text) : null,
+          feat ? more(feat.name, feat.text) : null,
         ),
       );
     }
@@ -1124,7 +1163,9 @@ const Wizard = (() => {
           (v) => update(() => (c.style = v)),
           { id: "style" },
         ),
-        c.style ? more(byId(data.feats, c.style).text) : null,
+        c.style
+          ? more(byId(data.feats, c.style).name, byId(data.feats, c.style).text)
+          : null,
       );
 
     const ml = masteryLimit(d);
@@ -1157,7 +1198,7 @@ const Wizard = (() => {
             label:
               o.name + (o.level ? ` (${t("levelN", { level: o.level })})` : ""),
             disabled: o.level > c.level,
-            more: more(o.text, "ⓘ"),
+            more: more(o.name, o.text, "ⓘ"),
           })),
           chosen,
           max,
@@ -1183,8 +1224,8 @@ const Wizard = (() => {
           el(
             "li",
             {},
-            more(f.text, `${f.level || ""} · ${f.name}`) ||
-              `${f.level} · ${f.name}`,
+            `${f.level || ""} · ${f.name} `,
+            more(f.name, f.text, "ⓘ"),
           ),
         ),
       ),
@@ -1297,6 +1338,7 @@ const Wizard = (() => {
       value: s.id,
       label: `${s.name} · ${tags.join(" · ")}`,
       more: more(
+        s.name,
         [
           { text: `${s.castingTime} · ${s.range} · ${s.duration}` },
           ...(s.text || []),
@@ -1719,8 +1761,11 @@ const Wizard = (() => {
     const scroll = panel.scrollTop;
     panel.replaceChildren(
       el("h3", { className: "w-step-title" }, i18n.t(`dnd.step.${step}`)),
-      ...RENDER[step](d),
-      nav(),
+      // flat + filter: as etapas devolvem listas aninhadas e null; o
+      // replaceChildren transformaria isso em texto ("null[object …]").
+      ...[RENDER[step](d), nav()]
+        .flat(Infinity)
+        .filter((n) => n != null && n !== false),
     );
     panel.scrollTop = scroll;
     showSummary(d);

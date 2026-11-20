@@ -248,6 +248,39 @@
           </fieldset>
         </div>
       </section>
+
+      <!--
+        Janela de informações: o texto do livro (magia, talento, traço)
+        abre aqui, por cima, em vez de esticar o criador. É uma .window
+        comum: o desktop.js arrasta, traz para a frente e fecha com o ✕
+        (data-action="close"). position: fixed tira ela do fluxo.
+      -->
+      <section
+        class="window win-info"
+        hidden
+        role="dialog"
+        aria-labelledby="info-title"
+        data-info
+      >
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="info-title">
+            ⓘ <span data-info-title></span>
+          </h2>
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn btn-close"
+              data-action="close"
+              data-info-close
+              aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
+            ></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="field info-body" data-info-body></div>
+        </div>
+      </section>
     </main>
 
     <footer class="taskbar">

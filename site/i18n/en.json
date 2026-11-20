@@ -353,7 +353,8 @@
       "needLand": "choose the terrain",
       "needFeatList": "choose the spell list for {name}",
       "overGold": "purchases exceed your gold",
-      "untrained": "not trained in {name}"
+      "untrained": "not trained in {name}",
+      "infoAbout": "About {name}"
     },
     "ability": {
       "str": "Strength",

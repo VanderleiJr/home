@@ -161,7 +161,8 @@
 
 /* A etapa rola por dentro: a janela não cresce sem fim com 200 magias. */
 .w-panel {
-  max-height: 70vh;
+  /* Altura fixa (não máxima): a janela não muda de tamanho entre etapas. */
+  height: min(70vh, 640px);
   padding: 8px;
   overflow: auto;
   overflow-wrap: anywhere;
@@ -265,19 +266,44 @@
   align-items: baseline;
 }
 
-/* "ⓘ" e "ver detalhes": texto do livro só quando pedido. */
-.w-more summary {
+/* "ⓘ": botão com cara de link que abre o texto na janela de informações. */
+.w-info-btn {
+  padding: 0 2px;
+  border: 0;
+  background: none;
   color: #000080;
+  font: inherit;
   cursor: pointer;
 }
 
-.w-item .w-more[open] {
-  flex-basis: 100%;
+.w-info-btn:hover {
+  text-decoration: underline;
 }
 
-.w-more p {
-  margin: 4px 0 4px 12px;
-  font-size: 0.85rem;
+/* ---------- Janela de informações ---------- */
+
+/*
+  Fixa na tela, fora do fluxo das outras janelas: abrir e fechar não
+  mexe no layout. O translate do win98.css (arrastar) continua valendo
+  por cima desta posição.
+*/
+.win-info {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: min(420px, calc(100vw - 32px));
+}
+
+/* O texto rola dentro da janela; ela nunca passa da altura da tela. */
+.info-body {
+  max-height: min(60vh, 520px);
+  padding: 6px 8px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.info-body p {
+  margin: 0 0 6px;
 }
 
 .w-trait,
@@ -405,5 +431,13 @@
   .w-summary {
     position: static;
     order: -1;
+  }
+
+  /* No celular a janela de informações ocupa a largura, perto do topo. */
+  .win-info {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
   }
 }
