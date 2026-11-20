@@ -10,7 +10,9 @@
 }
 
 .win-wizard {
-  flex: 0 1 640px;
+  flex: 0 1 940px;
+  /* min-width: 0 deixa a janela encolher abaixo do conteúdo (flex). */
+  min-width: 0;
 }
 
 /*
@@ -111,107 +113,6 @@
   color: #808080;
 }
 
-/* ---------- Prévia do texto extraído ---------- */
-
-.preview summary {
-  margin-top: 8px;
-  cursor: pointer;
-}
-
-.preview-page {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin: 6px 0;
-}
-
-.preview-page input {
-  width: 6ch;
-}
-
-/* pre-wrap mantém as quebras de linha do PDF mas não estoura a janela. */
-.preview-text {
-  max-height: 320px;
-  margin: 0;
-  overflow: auto;
-  font-size: 0.8rem;
-  white-space: pre-wrap;
-}
-
-/* ---------- Prévia das classes ---------- */
-
-/* Texto do livro pode ter palavras longas: quebra em vez de alargar a janela. */
-.extracted {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.extracted h3 {
-  margin: 12px 0 6px;
-  font-size: 1rem;
-}
-
-.class-card {
-  margin-bottom: 4px;
-}
-
-.class-card > summary {
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.class-card .tagline {
-  font-style: italic;
-}
-
-.class-card dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 2px 8px;
-  margin: 6px 0;
-}
-
-.class-card dt {
-  font-weight: bold;
-}
-
-.class-card dd {
-  margin: 0;
-}
-
-/* Tabela de progressão: rola na horizontal dentro da janela, nunca a página. */
-.table-wrap {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.progression {
-  border-collapse: collapse;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.progression th,
-.progression td {
-  padding: 1px 4px;
-  border: 1px solid #808080;
-  text-align: center;
-}
-
-/* A coluna de características é texto: alinhada à esquerda e quebrável. */
-.progression td:nth-child(3) {
-  white-space: normal;
-  text-align: left;
-}
-
-.feature summary {
-  cursor: pointer;
-}
-
-.feature p {
-  margin: 4px 0 4px 16px;
-}
-
 /* ---------- Livros guardados no navegador ---------- */
 
 .books-title {
@@ -232,4 +133,277 @@
   gap: 6px;
   align-items: center;
   justify-content: space-between;
+}
+
+/* ---------- Assistente: etapa + resumo ---------- */
+
+/* Etapa atual em destaque; as com pendência ganham um ponto vermelho. */
+.steps .btn[aria-pressed="true"] {
+  font-weight: bold;
+}
+
+.steps .btn.has-pending::after {
+  content: " •";
+  color: #c00000;
+}
+
+/*
+  Grade de duas colunas que vira uma só em telas estreitas: com
+  auto-fit + minmax, o navegador decide quantas colunas cabem, sem
+  media query. O resumo nunca fica mais estreito que 220px.
+*/
+.w-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  gap: 8px;
+  align-items: start;
+}
+
+/* A etapa rola por dentro: a janela não cresce sem fim com 200 magias. */
+.w-panel {
+  max-height: 70vh;
+  padding: 8px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Resumo "grudado" no topo enquanto a página rola (sticky). */
+.w-summary {
+  position: sticky;
+  top: 8px;
+}
+
+.w-panel h3 {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.w-panel .w-step-title {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+/* Cartões de classe/subclasse: o rádio fica dentro do cartão inteiro. */
+.w-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+}
+
+.w-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 4px;
+  padding: 4px;
+  border: 1px solid #808080;
+  background: #fff;
+  cursor: pointer;
+}
+
+.w-card small {
+  grid-column: 2;
+  color: #404040;
+}
+
+/* :has() pinta o cartão marcado sem JS (o .is-on é o plano B). */
+.w-card:has(input:checked),
+.w-card.is-on {
+  background: #dfe8ff;
+  outline: 1px solid #000080;
+}
+
+.w-tagline {
+  font-style: italic;
+}
+
+.w-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 8px;
+  margin: 6px 0;
+}
+
+.w-facts dt {
+  font-weight: bold;
+}
+
+.w-facts dd {
+  margin: 0;
+}
+
+.w-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 8px 4px 0;
+}
+
+.w-field select {
+  max-width: 100%;
+}
+
+.w-checks,
+.w-radios {
+  margin: 8px 0;
+}
+
+/* Listas longas (magias) em colunas que se ajustam à largura. */
+.w-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2px 8px;
+}
+
+.w-check {
+  display: block;
+}
+
+.w-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: baseline;
+}
+
+/* "ⓘ" e "ver detalhes": texto do livro só quando pedido. */
+.w-more summary {
+  color: #000080;
+  cursor: pointer;
+}
+
+.w-item .w-more[open] {
+  flex-basis: 100%;
+}
+
+.w-more p {
+  margin: 4px 0 4px 12px;
+  font-size: 0.85rem;
+}
+
+.w-trait,
+.w-feat {
+  margin: 6px 0;
+  padding: 4px 0;
+  border-top: 1px solid #c0c0c0;
+}
+
+.w-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: end;
+}
+
+.w-hint {
+  color: #404040;
+  font-size: 0.85rem;
+}
+
+.w-warn {
+  color: #c00000;
+  font-weight: bold;
+}
+
+.w-ok {
+  color: #006000;
+}
+
+.w-scores {
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+
+.w-scores th,
+.w-scores td {
+  padding: 2px 6px;
+  border: 1px solid #808080;
+  text-align: center;
+}
+
+.w-features {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.w-small {
+  min-width: 0;
+  margin-left: 6px;
+  padding: 0 6px;
+}
+
+.w-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 0;
+}
+
+/* ---------- Resumo do personagem ---------- */
+
+.w-summary h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.w-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+/* Cada número numa "caixinha" afundada, como os campos do Win98. */
+.w-stat {
+  display: grid;
+  padding: 2px 4px;
+  background: #fff;
+  box-shadow:
+    inset 1px 1px #808080,
+    inset -1px -1px #fff;
+  text-align: center;
+}
+
+.w-stat small {
+  font-size: 0.7rem;
+}
+
+.w-pending summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.w-pending ul {
+  margin: 4px 0;
+  padding-left: 16px;
+  font-size: 0.85rem;
+}
+
+/* Botão com cara de link: leva direto à etapa da pendência. */
+.w-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #000080;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/*
+  Telas estreitas: no fim do arquivo de propósito. Com a mesma
+  especificidade, vence a regra que vem depois; aqui ela sobrescreve
+  as de cima (o sticky do resumo, as duas colunas).
+*/
+@media (width < 720px) {
+  .w-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+    No celular o resumo sobe para cima da etapa (order) e deixa de ser
+    sticky: numa coluna só, ele cobriria a etapa ao rolar.
+  */
+  .w-summary {
+    position: static;
+    order: -1;
+  }
 }

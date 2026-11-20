@@ -8,17 +8,11 @@
 const input = document.querySelector("[data-book-input]");
 const dropzone = document.querySelector(".dropzone");
 const status = document.querySelector("[data-book-status]");
-const preview = document.querySelector("[data-preview]");
-const previewPage = document.querySelector("[data-preview-page]");
-const previewText = document.querySelector("[data-preview-text]");
 const progress = document.querySelector("[data-book-progress]");
 const bookMap = document.querySelector("[data-book-map]");
 const bookTree = document.querySelector("[data-book-tree]");
-const classesBox = document.querySelector("[data-classes]");
-const classList = document.querySelector("[data-class-list]");
 const booksBox = document.querySelector("[data-books]");
 const booksList = document.querySelector("[data-books-list]");
-let doc = null;
 // Livros carregados: id da fonte → registro { source, name, savedAt, data }.
 const loaded = new Map();
 
@@ -63,7 +57,7 @@ async function receive(file) {
       status.textContent = i18n.t("dnd.unknownBook", { name: file.name });
       return;
     }
-    doc = await PDF.open(buffer);
+    const doc = await PDF.open(buffer);
     progress.hidden = false;
     progress.max = doc.pageCount;
     const book = await DND.readBook(doc, (done) => {
@@ -90,9 +84,6 @@ async function receive(file) {
     });
     loaded.set(record.source, record);
     render();
-    previewPage.max = doc.pageCount;
-    preview.hidden = false;
-    showPage();
     /*
       Guardar pode falhar (aba anônima, cota cheia): o livro continua
       valendo nesta visita, só não fica para a próxima.
@@ -116,14 +107,10 @@ function render() {
   showBooks(records);
   const empty = records.length === 0;
   document.querySelector("[data-waiting]").hidden = !empty;
-  classesBox.hidden = empty;
   bookMap.hidden = empty;
-  if (empty) {
-    preview.hidden = true;
-    return;
-  }
-  const data = DND.merge(records.map((r) => r.data));
-  showClasses(data.classes);
+  // Sem livro, o assistente fica desabilitado (mas o rascunho continua guardado).
+  if (empty) return Wizard.start(null);
+  Wizard.start(DND.merge(records.map((r) => r.data)));
   // O mapa é de um livro só: mostra o do último carregado.
   showMap(records.at(-1).data.outline);
 }
@@ -167,7 +154,6 @@ async function forget(record) {
     console.error(error); // sem banco, não havia nada guardado
   }
   loaded.delete(record.source);
-  doc = null;
   render();
   status.textContent = i18n.t("dnd.forgotten", { name: record.name });
 }
@@ -205,108 +191,6 @@ async function restore() {
   });
 }
 
-/*
-  Monta elementos com uma função curta: el("p", { className: "x" }, "texto").
-  Tudo vira nó do DOM com textContent, nunca innerHTML: o texto vem de um
-  PDF, e assim nada nele pode ser interpretado como HTML.
-*/
-function el(tag, props = {}, ...children) {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(
-    ...children.flat(Infinity).filter((c) => c != null && c !== false),
-  );
-  return node;
-}
-
-// Parágrafo do livro, com o rótulo em negrito ("Duração.") quando houver.
-const paragraph = (p) =>
-  el(
-    "p",
-    {},
-    p.lead ? el("strong", {}, p.lead + " ") : null,
-    p.bullet ? "• " : "",
-    p.text,
-  );
-
-// Característica: <details> com "Nível N: Nome" e o texto dentro.
-const feature = (f) =>
-  el(
-    "details",
-    { className: "feature" },
-    el("summary", {}, f.level ? `${f.level} · ${f.name}` : f.name),
-    f.text.map(paragraph),
-  );
-
-function progressionTable(prog) {
-  return el(
-    "div",
-    { className: "table-wrap" },
-    el(
-      "table",
-      { className: "progression" },
-      el(
-        "thead",
-        {},
-        el(
-          "tr",
-          {},
-          prog.headers.map((h) => el("th", { scope: "col" }, h)),
-        ),
-      ),
-      el(
-        "tbody",
-        {},
-        prog.rows.map((r) =>
-          el(
-            "tr",
-            {},
-            el("td", {}, String(r.level)),
-            el("td", {}, `+${r.proficiency}`),
-            el("td", {}, r.features.join(", ") || "—"),
-            r.values.map((v) => el("td", {}, v)),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-// Uma ficha resumida por classe: traços, tabela, características e subclasses.
-function showClasses(classes) {
-  const t = i18n.t;
-  classList.replaceChildren(
-    ...classes.map((c) =>
-      el(
-        "details",
-        { className: "field class-card" },
-        el("summary", {}, `${c.name} — d${c.hitDie}`),
-        el("p", { className: "tagline" }, c.tagline),
-        el(
-          "dl",
-          {},
-          c.fields.map((f) => [el("dt", {}, f.label), el("dd", {}, f.value)]),
-        ),
-        c.description.map(paragraph),
-        progressionTable(c.progression),
-        el("h4", {}, t("dnd.features")),
-        c.features.map(feature),
-        el("h4", {}, t("dnd.subclasses")),
-        c.subclasses.map((s) =>
-          el(
-            "details",
-            { className: "feature" },
-            el("summary", {}, s.name),
-            el("p", { className: "tagline" }, s.tagline),
-            s.description.map(paragraph),
-            s.features.map(feature),
-            s.sections.map(feature),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 // Desenha a árvore de títulos como listas aninhadas (até 2 níveis de fundo).
 function showMap(outline) {
   const build = (nodes, depth) =>
@@ -325,20 +209,6 @@ function showMap(outline) {
     });
   bookTree.replaceChildren(...build(outline.children, 0));
 }
-
-// Texto da página escolhida, uma linha do PDF por linha.
-async function showPage() {
-  const n = Math.min(
-    Math.max(1, previewPage.valueAsNumber || 1),
-    doc.pageCount,
-  );
-  const lines = PDF.toLines(await doc.pageItems(n));
-  previewText.textContent = lines.map((l) => l.text).join("\n");
-}
-
-previewPage.addEventListener("input", () => {
-  if (doc) showPage();
-});
 
 input.addEventListener("change", () => {
   if (input.files[0]) receive(input.files[0]);

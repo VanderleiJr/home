@@ -30,6 +30,9 @@
 
   const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
+  // Idiomas iniciais: Comum + dois à escolha da tabela de idiomas padrão.
+  const LANGUAGES = 2;
+
   // Compra de pontos: tudo começa em 8; os valores altos custam mais.
   const POINT_BUDGET = 27;
   const POINT_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
@@ -330,9 +333,94 @@
   // Limite de escolha: quantas faltam ou sobram (0 = ok).
   const remaining = (chosen, limit) => limit - chosen.length;
 
+  // ---------- Equipamento inicial ----------
+
+  /*
+    Catálogo único de tudo que se compra: armas, armaduras, ferramentas,
+    itens e variantes (focos, munição, símbolos). Cada item lembra o seu
+    tipo ("kind") para a interface saber o que dá para equipar.
+  */
+  function catalog(equipment) {
+    const out = [];
+    const add = (list, kind, group) =>
+      (list || []).forEach((i) =>
+        out.push({ ...i, kind, ...(group && { group }) }),
+      );
+    add(equipment.weapons, "weapon");
+    add(equipment.armor, "armor");
+    add(equipment.tools, "tool");
+    add(equipment.gear, "gear");
+    for (const [group, list] of Object.entries(equipment.variants || {}))
+      add(list, "variant", group);
+    return out;
+  }
+
+  /*
+    O texto do equipamento e o catálogo nem sempre usam o mesmo nome:
+    "Roupas de Viagem" × "Roupas, Viagem", "Armadura de Couro" × "Couro",
+    "Machadinhas" × "Machadinha". Por isso cada nome vira um conjunto de
+    palavras no singular, sem preposições nem o que vem entre parênteses.
+  */
+  const STOP = new Set(["de", "da", "do", "das", "dos", "e", "a", "o"]);
+  const singular = (w) => w.replace(/(oes|aes)$/, "ao").replace(/s$/, "");
+  const words = (s) =>
+    new Set(
+      norm(s.replace(/\(.*?\)/g, ""))
+        .replace(/[^a-z0-9 ]/g, " ")
+        .split(" ")
+        .filter((w) => w && !STOP.has(w))
+        .map(singular),
+    );
+  const contains = (big, small) => [...small].every((w) => big.has(w));
+
+  /*
+    "4 Machadinhas, Machado Grande, Kit de Aventureiro e 15 PO" →
+    { items: [{ item, qty: 4, text }, …], gold: 15 }. Ordem de busca:
+    nome igual; o texto contém o nome inteiro de um item (o maior vence:
+    "Couro Batido" antes de "Couro"); uma palavra só dentro de um nome
+    ("Fantasias"). "Foco Arcano (orbe)" procura "orbe" nas variantes.
+    O que não casar volta com item: null e o texto original.
+  */
+  function itemsFrom(text, items) {
+    const parts = text
+      .split(/,\s*|\s+e\s+(?=\d|[A-ZÀ-Ú])/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const indexed = items
+      .map((i) => ({ i, w: words(i.name) }))
+      .sort((x, y) => y.w.size - x.w.size);
+    const result = { items: [], gold: 0 };
+    for (const part of parts) {
+      const gold = /^(\d+)\s*PO$/i.exec(part);
+      if (gold) {
+        result.gold += Number(gold[1]);
+        continue;
+      }
+      const m = /^(\d+)\s+(.+)$/.exec(part);
+      const qty = m ? Number(m[1]) : 1;
+      const name = (m ? m[2] : part).replace(/\s+à sua escolha.*$/i, "");
+      const inner = /\((.+?)\)/.exec(name)?.[1];
+      const w = words(name);
+      const same = (want) => (x) =>
+        x.w.size === want.size && contains(x.w, want);
+      const variants = indexed.filter((x) => x.i.kind === "variant");
+      const iw = inner && words(inner);
+      const found =
+        (iw &&
+          (variants.find(same(iw)) ||
+            variants.find((x) => contains(x.w, iw)))) ||
+        indexed.find(same(w)) ||
+        indexed.find((x) => x.w.size && contains(w, x.w)) ||
+        (w.size === 1 && indexed.find((x) => contains(x.w, w)));
+      result.items.push({ item: found ? found.i : null, qty, text: part });
+    }
+    return result;
+  }
+
   const api = {
     ABILITIES,
     STANDARD_ARRAY,
+    LANGUAGES,
     POINT_BUDGET,
     POINT_COST,
     norm,
@@ -359,6 +447,8 @@
     featAllowed,
     skillIds,
     remaining,
+    catalog,
+    itemsFrom,
   };
   root.Rules = api;
   if (typeof module !== "undefined") module.exports = api;

@@ -32,6 +32,8 @@
     <script src="store.js" defer></script>
     <!-- Matemática das regras (modificadores, PV, CA, magias): sem dados do livro. -->
     <script src="rules.js" defer></script>
+    <!-- Assistente: escolhas do personagem, etapa por etapa. -->
+    <script src="wizard.js" defer></script>
     <script src="dnd.js" defer></script>
   </head>
   <body>
@@ -114,19 +116,6 @@
             <summary data-i18n="dnd.map">🗺 Mapa do livro</summary>
             <ul class="field tree" data-book-tree></ul>
           </details>
-
-          <!--
-            Prévia do texto extraído, página a página: serve para conferir o
-            leitor de PDF. <details> abre e fecha sem nenhum JavaScript.
-          -->
-          <details class="preview" hidden data-preview>
-            <summary data-i18n="dnd.preview">🔎 Ver o texto extraído</summary>
-            <label class="preview-page">
-              <span data-i18n="dnd.page">Página</span>
-              <input type="number" min="1" value="1" data-preview-page />
-            </label>
-            <pre class="field preview-text" data-preview-text></pre>
-          </details>
         </div>
       </section>
 
@@ -153,14 +142,25 @@
           -->
           <fieldset class="wizard" disabled data-wizard>
             <legend data-i18n="dnd.steps">Etapas</legend>
+            <!-- aria-pressed marca a etapa atual; .has-pending, as que faltam. -->
             <ol class="steps">
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.class">
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="class"
+                  data-i18n="dnd.step.class"
+                >
                   Classe
                 </button>
               </li>
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.origin">
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="origin"
+                  data-i18n="dnd.step.origin"
+                >
                   Origem
                 </button>
               </li>
@@ -168,18 +168,29 @@
                 <button
                   type="button"
                   class="btn"
+                  data-step="abilities"
                   data-i18n="dnd.step.abilities"
                 >
                   Atributos
                 </button>
               </li>
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.level">
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="level"
+                  data-i18n="dnd.step.level"
+                >
                   Nível
                 </button>
               </li>
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.spells">
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="spells"
+                  data-i18n="dnd.step.spells"
+                >
                   Magias
                 </button>
               </li>
@@ -187,18 +198,33 @@
                 <button
                   type="button"
                   class="btn"
+                  data-step="equipment"
                   data-i18n="dnd.step.equipment"
                 >
                   Equipamento
                 </button>
               </li>
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.details">
+                <button
+                  type="button"
+                  class="btn"
+                  disabled
+                  title="Em breve"
+                  data-i18n="dnd.step.details"
+                  data-i18n-attr="title:dnd.w.soon"
+                >
                   Detalhes
                 </button>
               </li>
               <li>
-                <button type="button" class="btn" data-i18n="dnd.step.sheet">
+                <button
+                  type="button"
+                  class="btn"
+                  disabled
+                  title="Em breve"
+                  data-i18n="dnd.step.sheet"
+                  data-i18n-attr="title:dnd.w.soon"
+                >
                   Ficha
                 </button>
               </li>
@@ -206,16 +232,20 @@
             <p class="field empty" data-i18n="dnd.waiting" data-waiting>
               ⏳ Carregue o livro para começar.
             </p>
+            <!--
+              Duas colunas: a etapa atual e o resumo do personagem, que
+              fica sempre à vista e lista o que falta escolher.
+            -->
+            <div class="w-layout">
+              <div class="field w-panel" hidden data-panel></div>
+              <aside
+                class="w-summary"
+                hidden
+                aria-live="polite"
+                data-summary
+              ></aside>
+            </div>
           </fieldset>
-
-          <!--
-            Prévia das classes extraídas, para conferir os dados antes de o
-            assistente usá-los. Cada classe é um <details>: abre sem JS.
-          -->
-          <section class="extracted" hidden data-classes>
-            <h3 data-i18n="dnd.classesTitle">📜 Classes extraídas do livro</h3>
-            <div data-class-list></div>
-          </section>
         </div>
       </section>
     </main>

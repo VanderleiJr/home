@@ -541,6 +541,26 @@ function expect(label, ok, detail = "") {
     ),
   );
 
+  const cat = R.catalog(eq);
+  const fa = R.itemsFrom(fighter.equipment[0].text, cat);
+  expect(
+    "equipamento do Guerreiro (A): Cota de Malha, 8 Azagaias e 4 PO",
+    fa.items.some((x) => x.item?.name === "Cota de Malha") &&
+      fa.items.some((x) => x.item?.name === "Azagaia" && x.qty === 8) &&
+      fa.gold === 4,
+  );
+  const options = [...classes, ...bgs].flatMap((o) => o.equipment);
+  const loose = options.flatMap((o) =>
+    R.itemsFrom(o.text, cat)
+      .items.filter((x) => !x.item)
+      .map((x) => x.text),
+  );
+  expect(
+    `itens iniciais casados com o catálogo (sobram só escolhas livres)`,
+    loose.length <= 3,
+    loose.join(" | "),
+  );
+
   // Despejo de um item: --classe Nome, --antecedente Nome, --especie Nome, --talento Nome, --magia Nome.
   const dumps = {
     "--classe": classes,

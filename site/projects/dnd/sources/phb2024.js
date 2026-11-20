@@ -705,6 +705,16 @@
           owner.options = optionsOf(t);
         } else (sp.tables ||= []).push(t);
       }
+      // Traços que dão escolhas: "um talento de Origem à sua escolha",
+      // "proficiência em uma perícia à sua escolha".
+      for (const tr of sp.traits) {
+        const t = tr.text.map((p) => p.text).join(" ");
+        if (/talento de origem à sua escolha/i.test(t))
+          tr.grants = { feat: "origin" };
+        const sk = /proficiência em (\S+) perícias? à sua escolha/i.exec(t);
+        if (sk && WORDS[DND.norm(sk[1])])
+          tr.grants = { skills: WORDS[DND.norm(sk[1])] };
+      }
       return sp;
     });
   }
@@ -794,6 +804,49 @@
     return pre;
   }
 
+  /*
+    Escolhas que um talento dá, lidas do texto:
+    "aprende dois truques … na lista de magias de Clérigo, Druida ou Mago"
+    + "Escolha uma magia de 1º Círculo" → spells;
+    "proficiência em qualquer combinação de três perícias ou ferramentas"
+    → proficiencies { count, kinds }.
+  */
+  const KINDS = [
+    [/perícias ou ferramentas/i, ["skill", "tool"]],
+    [/ferramentas de artesão/i, ["artisan"]],
+    [/instrumentos musicais/i, ["instrument"]],
+    [/perícias/i, ["skill"]],
+  ];
+  function featGrants(text) {
+    const all = text.map((p) => p.text).join(" ");
+    const out = {};
+    const c = /aprende (\S+) truques/i.exec(all);
+    if (c) {
+      const lists = /lista de magias de ([^.]+?)\./i.exec(all);
+      out.spells = {
+        cantrips: WORDS[DND.norm(c[1])] || 0,
+        level1: /magia de 1º círculo/i.test(all) ? 1 : 0,
+        lists: lists
+          ? lists[1].split(/,\s*|\s+ou\s+/).map((n) => slug(n.trim()))
+          : [],
+      };
+    }
+    const pr =
+      /proficiência (?:em|com) (?:qualquer combinação de )?(\S+) ((?:perícias ou ferramentas|ferramentas de artesão|instrumentos musicais|perícias))/i.exec(
+        all,
+      );
+    if (pr && WORDS[DND.norm(pr[1])])
+      out.proficiencies = {
+        count: WORDS[DND.norm(pr[1])],
+        kinds: KINDS.find(([re]) => re.test(pr[2]))[1],
+      };
+    // Bônus fixo de CA vestindo armadura (estilo Defensivo).
+    const ac =
+      /usando armadura[^.]*bônus de \+(\d) na Classe de Armadura/i.exec(all);
+    if (ac) out.ac = { bonus: Number(ac[1]), armored: true };
+    return out;
+  }
+
   // "Aumente seu valor de Força ou Destreza em 1, até no máximo 20."
   function parseAsi(text) {
     const from = abilitiesIn(text);
@@ -845,6 +898,7 @@
           ...(pre && { prerequisite: parsePrerequisite(pre[1]) }),
           repeatable: benefits.some((p) => /^repetivel/.test(DND.norm(p.lead))),
           ...(asiP && { asi: parseAsi(asiP.text) }),
+          ...featGrants(text),
           text,
           ...(tables.length && { tables }),
         });
@@ -1164,7 +1218,7 @@
     name: "Livro do Jogador (2024)",
     // Versão do extrator: suba o número sempre que a leitura mudar, para
     // que os dados guardados no navegador (store.js) sejam relidos.
-    version: 2,
+    version: 3,
     edition: "2024",
     lang: "pt-BR",
     sha256: [
