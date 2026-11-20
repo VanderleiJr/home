@@ -82,6 +82,35 @@
   text-align: center;
 }
 
+/* ---------- Progresso e mapa do livro ---------- */
+
+.progress {
+  width: 100%;
+}
+
+.book-map summary {
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.tree {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 4px 4px 4px 20px;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
+.tree ul {
+  padding-left: 16px;
+}
+
+/* Número da página alinhado à direita, como num sumário impresso. */
+.tree .page {
+  float: right;
+  color: #808080;
+}
+
 /* ---------- Prévia do texto extraído ---------- */
 
 .preview summary {

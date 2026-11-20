@@ -1173,6 +1173,9 @@
           font: it.font,
           bold: it.bold,
           italic: it.italic,
+          // Os pedaços originais ficam na linha: tabelas e rótulos em
+          // negrito ("Alcance:") precisam das posições de cada um.
+          items: [it],
         };
         lines.push(cur);
         continue;
@@ -1185,6 +1188,7 @@
       )
         cur.text += " ";
       cur.text += it.str;
+      cur.items.push(it);
       cur.end = it.x + it.w;
       cur.size = Math.max(cur.size, it.size);
     }

@@ -220,6 +220,9 @@
     "opened": "📖 {name} ({size}): {pages} pages read in {ms} ms",
     "readError": "⚠️ Couldn't read the PDF: {error}",
     "preview": "🔎 Show the extracted text",
-    "page": "Page"
+    "page": "Page",
+    "unknownBook": "⚠️ {name}: unrecognized book version",
+    "progress": "⏳ Reading page {done} of {total}…",
+    "map": "🗺 Book map"
   }
 }

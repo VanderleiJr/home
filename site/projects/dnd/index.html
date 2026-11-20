@@ -25,6 +25,9 @@
     <script src="../../assets/desktop.js" defer></script>
     <!-- Leitor de PDF próprio (sem bibliotecas): só extrai o texto. -->
     <script src="pdf.js" defer></script>
+    <!-- Ferramentas genéricas de extração + uma "fonte" por livro suportado. -->
+    <script src="extract.js" defer></script>
+    <script src="sources/phb2024.js" defer></script>
     <script src="dnd.js" defer></script>
   </head>
   <body>
@@ -87,6 +90,14 @@
           <p class="statusbar" role="status" data-book-status>
             <span data-i18n="dnd.noBook">📭 Nenhum livro carregado</span>
           </p>
+          <!-- <progress> nativo: o win98.css não precisa de nada para mostrá-lo. -->
+          <progress class="progress" hidden data-book-progress></progress>
+
+          <!-- Mapa do livro: capítulos e seções que o extrator reconheceu. -->
+          <details class="book-map" hidden data-book-map>
+            <summary data-i18n="dnd.map">🗺 Mapa do livro</summary>
+            <ul class="field tree" data-book-tree></ul>
+          </details>
 
           <!--
             Prévia do texto extraído, página a página: serve para conferir o
