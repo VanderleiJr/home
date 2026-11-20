@@ -374,7 +374,7 @@
   const contains = (big, small) => [...small].every((w) => big.has(w));
 
   /*
-    "4 Machadinhas, Machado Grande, Kit de Aventureiro e 15 PO" →
+    "3 Adagas, Arco Curto, Kit de Aventureiro e 12 PO" (exemplo) →
     { items: [{ item, qty: 4, text }, …], gold: 15 }. Ordem de busca:
     nome igual; o texto contém o nome inteiro de um item (o maior vence:
     "Couro Batido" antes de "Couro"); uma palavra só dentro de um nome

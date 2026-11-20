@@ -172,7 +172,7 @@
   const paragraphs = (book, node, own) =>
     DND.paragraphs(DND.body(book, node, { own }).filter((l) => !isNoise(l)));
 
-  // "Escolha 2: Acrobacia, Atletismo … ou Sobrevivência"
+  // Formato: "Escolha 2: <perícia>, <perícia> … ou <perícia>"
   function parseSkills(value) {
     const m = /(\d+)/.exec(value); // "Escolha 2: …" ou "Escolha quaisquer 3 perícias"
     const list = value.includes(":") ? value.slice(value.indexOf(":") + 1) : "";
@@ -825,8 +825,8 @@
   };
 
   /*
-    "Nível 4 ou superior, Força ou Destreza 13 ou superior" →
-    { level: 4, abilities: { any: ["str","dex"], min: 13 }, other: [] }.
+    Exemplo: "Nível 8 ou superior, Força ou Destreza 15 ou superior" →
+    { level: 8, abilities: { any: ["str","dex"], min: 15 }, other: [] }.
     O que não for nível nem atributo (treinamento com armadura,
     característica de conjuração…) fica em "other", como texto.
   */
@@ -858,9 +858,9 @@
 
   /*
     Escolhas que um talento dá, lidas do texto:
-    "aprende dois truques … na lista de magias de Clérigo, Druida ou Mago"
+    "aprende <N> truques … na lista de magias de <classe>, <classe> ou <classe>"
     + "Escolha uma magia de 1º Círculo" → spells;
-    "proficiência em qualquer combinação de três perícias ou ferramentas"
+    "proficiência em <N> perícias ou ferramentas" (qualquer combinação)
     → proficiencies { count, kinds }.
   */
   const KINDS = [
@@ -899,7 +899,7 @@
     return out;
   }
 
-  // "Aumente seu valor de Força ou Destreza em 1, até no máximo 20."
+  // Formato: "Aumente <atributo> ou <atributo> em 1, até no máximo 20."
   function parseAsi(text) {
     const from = abilitiesIn(text);
     return {
@@ -977,7 +977,7 @@
     return { level, school, classes: list(classes).map(slug) };
   }
 
-  // "V, S, M (uma joia no valor de 1.000 ou mais PO, que a magia consome)"
+  // Formato: "V, S, M (<material>, valor em PO, às vezes consumido)"
   function parseComponents(value) {
     const m = /\bM\s*\((.*)\)\s*$/.exec(value);
     const cost = m && /([\d.]+)(?:\+|\s+ou mais)?\s*PO/.exec(m[1]);

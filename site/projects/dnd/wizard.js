@@ -2,7 +2,7 @@
   Assistente do d&d.exe: guarda as escolhas do personagem e desenha uma
   etapa por vez. O livro nunca aparece "cru": os dados extraídos viram
   opções (o que dá para escolher), limites (quantas) e números (PV, CA).
-  Texto de regra só sob demanda, dentro de um <details>.
+  Texto de regra só sob demanda, no botão ⓘ (janela à parte).
 
   Fluxo: toda mudança passa por update() → recalcula tudo (derive) →
   redesenha a etapa e o resumo. Recalcular do zero é simples e barato
