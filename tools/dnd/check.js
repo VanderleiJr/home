@@ -11,6 +11,7 @@ const site = path.join(__dirname, "../../site/projects/dnd");
 const PDF = require(path.join(site, "pdf.js"));
 globalThis.PDF = PDF;
 const DND = require(path.join(site, "extract.js"));
+const R = require(path.join(site, "rules.js"));
 for (const f of fs.readdirSync(path.join(site, "sources")))
   require(path.join(site, "sources", f));
 
@@ -342,6 +343,202 @@ function expect(label, ok, detail = "") {
     `   variantes: ${Object.entries(eq.variants || {})
       .map(([k, v]) => `${k} ${v.length}`)
       .join(", ")}`,
+  );
+
+  // ---------- Motor de regras (rules.js) com casos conhecidos ----------
+  console.log("\n🧮 Regras");
+  const eqv = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const by = (list, name) =>
+    list.find((x) => DND.norm(x.name) === DND.norm(name));
+  const sc = (str, dex, con, int, wis, cha) => ({
+    str,
+    dex,
+    con,
+    int,
+    wis,
+    cha,
+  });
+  expect(
+    "modificadores 8/10/15/20 → −1/0/+2/+5",
+    eqv([8, 10, 15, 20].map(R.mod), [-1, 0, 2, 5]),
+  );
+  expect(
+    "proficiência nos níveis 1/5/17 → +2/+3/+6",
+    eqv([1, 5, 17].map(R.proficiency), [2, 3, 6]),
+  );
+  expect(
+    "compra de pontos: 15,15,15,8,8,8 gasta 27; um 9 a mais estoura",
+    R.pointBuy(sc(15, 15, 15, 8, 8, 8)).left === 0 &&
+      !R.pointBuy(sc(15, 15, 15, 9, 8, 8)).valid,
+  );
+  expect(
+    "conjunto padrão aceita a permutação e recusa repetidos",
+    R.standardArrayValid(sc(8, 15, 14, 10, 13, 12)) &&
+      !R.standardArrayValid(sc(15, 15, 14, 10, 13, 12)),
+  );
+  const seq = [0.99, 0, 0.5, 0.7]; // 6, 1, 4, 5
+  expect(
+    "4d6 descarta o menor (6,1,4,5 → 15)",
+    R.roll4d6(() => seq.shift()).total === 15,
+  );
+  expect(
+    "antecedente: +2/+1 e +1/+1/+1 só nos atributos permitidos",
+    R.backgroundBonusValid({ int: 2, wis: 1 }, ["int", "wis", "cha"]) &&
+      R.backgroundBonusValid({ int: 1, wis: 1, cha: 1 }, [
+        "int",
+        "wis",
+        "cha",
+      ]) &&
+      !R.backgroundBonusValid({ str: 2, wis: 1 }, ["int", "wis", "cha"]) &&
+      !R.backgroundBonusValid({ int: 2, wis: 2 }, ["int", "wis", "cha"]),
+  );
+  expect(
+    "aumentos param em 20 (e em 30 na dádiva épica)",
+    R.scoresWith(sc(19, 8, 8, 8, 8, 8), [
+      { ability: "str", amount: 2 },
+      { ability: "str", amount: 1, max: 30 },
+    ]).str === 21,
+  );
+  const fighter = by(classes, "Guerreiro");
+  expect(
+    "PV Guerreiro (d10, Con +2): nível 1 = 12, nível 5 na média = 44",
+    R.hitPoints({ hitDie: fighter.hitDie, level: 1, con: 2 }) === 12 &&
+      R.hitPoints({ hitDie: fighter.hitDie, level: 5, con: 2 }) === 44,
+  );
+  const mail = by(eq.armor, "Cota de Malha");
+  const shield = eq.armor.find((a) => a.category === "shield");
+  const barb = by(classes, "Bárbaro");
+  const monk = by(classes, "Monge");
+  expect(
+    "CA: Cota de Malha + Escudo = 18; Bárbaro Des 14/Con 16 sem armadura + escudo = 17",
+    R.armorClass({ armor: mail, shield, scores: sc(16, 14, 16, 8, 8, 8) }) ===
+      18 &&
+      R.armorClass({
+        shield,
+        scores: sc(16, 14, 16, 8, 8, 8),
+        unarmored: barb.unarmored,
+      }) === 17,
+  );
+  expect(
+    "CA: Monge perde a Defesa sem Armadura com escudo",
+    R.armorClass({
+      scores: sc(8, 16, 8, 8, 16, 8),
+      unarmored: monk.unarmored,
+    }) === 16 &&
+      R.armorClass({
+        shield,
+        scores: sc(8, 16, 8, 8, 16, 8),
+        unarmored: monk.unarmored,
+      }) === 15,
+  );
+  const wizard = by(classes, "Mago");
+  const w5 = R.casting(wizard, null, 5);
+  expect(
+    "Mago nível 5: 4 truques, 9 preparadas, espaços 4/3/2, CD 14 com Int 16",
+    w5.cantrips === 4 &&
+      w5.prepared === 9 &&
+      eqv(w5.slots.slice(0, 4), [4, 3, 2, 0]) &&
+      w5.maxLevel === 3 &&
+      R.spellSaveDC(R.proficiency(5), R.mod(16)) === 14,
+    JSON.stringify({ ...w5, slots: w5.slots.join("/") }),
+  );
+  const w5b = R.casting(by(classes, "Bruxo"), null, 5);
+  expect(
+    "Bruxo nível 5: Magia de Pacto com 2 espaços de 3º círculo",
+    eqv(w5b.pact, { slots: 2, level: 3 }) && w5b.maxLevel === 3,
+  );
+  const ek = by(fighter.subclasses, "Cavaleiro Místico");
+  const ek7 = R.casting(fighter, ek, 7);
+  expect(
+    "Cavaleiro Místico nível 7: Int, lista do Mago, espaços 4/2",
+    ek7?.ability === "int" &&
+      ek7.list === "mago" &&
+      eqv(ek7.slots.slice(0, 2), [4, 2]) &&
+      !R.casting(fighter, ek, 2),
+  );
+  expect(
+    "Paladino nível 1 já conjura (1º círculo)",
+    R.casting(by(classes, "Paladino"), null, 1).maxLevel === 1,
+  );
+  const ms = R.milestones(fighter.progression);
+  expect(
+    "marcos do Guerreiro: subclasse 3, ASI 4/6/8/12/14/16, dádiva 19",
+    eqv(ms.subclass, [3]) &&
+      eqv(ms.asi, [4, 6, 8, 12, 14, 16]) &&
+      eqv(ms.epic, [19]),
+  );
+  expect(
+    "toda classe tem subclasse e ASI na tabela",
+    classes.every((c) => {
+      const m = R.milestones(c.progression);
+      return (
+        m.subclass.length === 1 && m.asi.length >= 4 && m.epic.length === 1
+      );
+    }),
+  );
+  const spellIds = new Set(spells.map((s) => s.id));
+  const life = R.grantedSpells(
+    by(by(classes, "Clérigo").subclasses, "Domínio da Vida"),
+    5,
+  );
+  expect(
+    "Domínio da Vida nível 5: 6 magias sempre preparadas, todas existentes",
+    life.length === 6 && life.every((id) => spellIds.has(id)),
+  );
+  const listed = classes.flatMap((c) =>
+    c.subclasses.flatMap((s) =>
+      (s.spellLists || []).flatMap((l) => l.rows.flatMap((r) => r.spells)),
+    ),
+  );
+  const unknownSub = listed.filter((s) => !spellIds.has(s.id));
+  expect(
+    `magias de subclasse existem (${listed.length})`,
+    !unknownSub.length,
+    unknownSub.map((s) => s.name).join(", "),
+  );
+  const epic = feats.find((f) => f.category === "epic-boon");
+  expect(
+    "talento épico recusado no nível 4, aceito no 19",
+    !R.featAllowed(epic, { level: 4, scores: sc(10, 10, 10, 10, 10, 10) }).ok &&
+      R.featAllowed(epic, { level: 19, scores: sc(10, 10, 10, 10, 10, 10) }).ok,
+  );
+  const withAbility = feats.find((f) => f.prerequisite?.abilities?.min);
+  expect(
+    `pré-requisito de atributo (${withAbility?.name})`,
+    withAbility &&
+      !R.featAllowed(withAbility, { level: 20, scores: sc(8, 8, 8, 8, 8, 8) })
+        .ok,
+  );
+  const W = (n) => by(eq.weapons, n);
+  expect(
+    "Monge: Espada Curta (marcial leve) sim, Espada Longa não; Ladino: Rapieira sim",
+    R.weaponProficient(monk.weapons, W("Espada Curta")) &&
+      !R.weaponProficient(monk.weapons, W("Espada Longa")) &&
+      R.weaponProficient(by(classes, "Ladino").weapons, W("Rapieira")),
+  );
+  const rap = R.weaponAttack(
+    W("Rapieira"),
+    sc(10, 16, 10, 10, 10, 10),
+    2,
+    true,
+  );
+  expect(
+    "Rapieira com Des 16: +5, 1d8+3 (Acuidade)",
+    rap.attack === 5 && rap.damage === "1d8+3",
+    JSON.stringify(rap),
+  );
+  expect(
+    "treinamento: Guerreiro usa pesada, Mago nenhuma",
+    R.armorTraining(fighter.armor).has("heavy") &&
+      R.armorTraining(wizard.armor).size === 0,
+  );
+  expect(
+    "perícias de classe viram ids",
+    classes.every(
+      (c) =>
+        c.skills.any ||
+        R.skillIds(c.skills.from, skills).length === c.skills.from.length,
+    ),
   );
 
   // Despejo de um item: --classe Nome, --antecedente Nome, --especie Nome, --talento Nome, --magia Nome.

@@ -27,7 +27,7 @@ tools/dnd/                diagnóstico e conferência do extrator do d&d.exe (fo
 
 ## d&d.exe (em construção, branch `feature/dnd`)
 
-Criador de personagem de D&D 2024 que lê o **seu** PDF do Livro do Jogador direto no navegador: nenhum conteúdo dos livros fica no repositório nem é enviado a lugar nenhum. `pdf.js` é um leitor de PDF próprio (sem bibliotecas), `extract.js` reúne ferramentas genéricas de extração e cada livro suportado é uma fonte em `sources/` (reconhecida pelo SHA-256 do arquivo). Os dados extraídos ficam guardados só no navegador (IndexedDB, `store.js`), com botão para esquecê-los. Com o PDF em `tools/dnd/livros/` (ignorado pelo git), `npm run dnd:check` confere a extração.
+Criador de personagem de D&D 2024 que lê o **seu** PDF do Livro do Jogador direto no navegador: nenhum conteúdo dos livros fica no repositório nem é enviado a lugar nenhum. `pdf.js` é um leitor de PDF próprio (sem bibliotecas), `extract.js` reúne ferramentas genéricas de extração e cada livro suportado é uma fonte em `sources/` (reconhecida pelo SHA-256 do arquivo). Os dados extraídos ficam guardados só no navegador (IndexedDB, `store.js`), com botão para esquecê-los. `rules.js` faz só a matemática das regras (modificadores, PV, CA, magias) sobre esses dados. Com o PDF em `tools/dnd/livros/` (ignorado pelo git), `npm run dnd:check` confere a extração e testa as regras.
 
 ## Traduções
 

@@ -133,6 +133,9 @@
 
   // "Escolha A ou B: (A) …; ou (B) 75 PO" → [{ option: "A", text }, …]
   function parseEquipment(value) {
+    // Às vezes o "(A)" foi esquecido: "Escolha A ou B: Cota…; ou (B) 110 PO".
+    if (!/\(A\)/.test(value) && /\(B\)/.test(value))
+      value = value.replace(/^(Escolha[^:]*:)?\s*/, "$1 (A) ");
     const parts = value.split(/\(([A-Z])\)/).slice(1);
     const out = [];
     for (let i = 0; i < parts.length; i += 2)
@@ -146,7 +149,15 @@
     return out;
   }
 
-  function parseTraits(fields) {
+  function parseTraits(raw) {
+    // Rótulo quebrado em duas linhas ("Proficiências com" / "Ferramentas"):
+    // a segunda metade vem como um campo vazio logo depois.
+    const fields = [];
+    for (const f of raw) {
+      const prev = fields.at(-1);
+      if (prev && !f.value && prev.value) prev.label += " " + f.label;
+      else fields.push({ ...f });
+    }
     const traits = { fields };
     for (const { label, value } of fields) {
       const k = DND.norm(label);
@@ -266,6 +277,131 @@
     }
   }
 
+  // Números por extenso que aparecem nas regras ("Você conhece dois truques").
+  const WORDS = {
+    um: 1,
+    uma: 1,
+    dois: 2,
+    duas: 2,
+    tres: 3,
+    quatro: 4,
+    cinco: 5,
+  };
+
+  /*
+    Conjuração: o atributo sai do parágrafo "Atributo de Conjuração."
+    (ou do texto "X é seu atributo de conjuração"). A lista de magias é
+    a da própria classe, ou a citada no texto ("lista de magias de
+    Mago") quando é uma subclasse que conjura (Cavaleiro Místico).
+  */
+  function castingIn(items, classIds) {
+    for (const f of items)
+      for (const p of f.text) {
+        const t = `${p.lead || ""} ${p.text}`;
+        if (!/atributo de conjuração/i.test(t)) continue;
+        const m = /(\S+) é (?:seu|o) atributo de conjuração/i.exec(t);
+        const ability = m && abilitiesIn(m[1])[0];
+        if (!ability) continue;
+        const all = f.text.map((q) => q.text).join(" ");
+        const list = /lista de magias de (\S+)/i.exec(all);
+        const cantrips = /conhece (\S+) truques/i.exec(all);
+        return {
+          ability,
+          feature: f.name,
+          ...(list &&
+            classIds.includes(slug(list[1])) && {
+              list: slug(list[1]),
+            }),
+          ...(cantrips &&
+            WORDS[DND.norm(cantrips[1])] && {
+              cantrips: WORDS[DND.norm(cantrips[1])],
+            }),
+        };
+      }
+    return null;
+  }
+
+  /*
+    Tabela "Nível de X | Magias": magias sempre preparadas de uma
+    subclasse. O livro às vezes funde a 1ª linha ao cabeçalho
+    ("Nível de Guardião 3" / "Magias Enfeitiçar Pessoa"): ela é refeita.
+  */
+  function spellTable(t) {
+    if (t.columns.length !== 2 || !/^nivel/.test(DND.norm(t.columns[0])))
+      return null;
+    if (!/magia/.test(DND.norm(t.columns[1]))) return null;
+    const rows = [...t.rows];
+    const m = /(\d+)$/.exec(t.columns[0]);
+    if (m)
+      rows.unshift([
+        m[1],
+        t.columns[1].replace(/^Magias(\s+de\s+\S+\s+\S+)?\s*/, ""),
+      ]);
+    return {
+      title: t.title,
+      rows: rows
+        .filter((r) => /^\d+/.test(r[0]))
+        .map((r) => ({
+          level: parseInt(r[0], 10),
+          spells: r[1]
+            .split(/,\s*/)
+            .map((n) => n.trim())
+            .filter(Boolean)
+            .map((name) => ({
+              id: SPELL_ALIASES[slug(name)] || slug(name),
+              name,
+            })),
+        })),
+    };
+  }
+
+  // Tabela "Nível | Magias Preparadas | Espaços 1…4" de subclasse.
+  function casterTable(t) {
+    const prep = t.columns.findIndex((c) => /magias preparadas/i.test(c));
+    if (prep < 0 || !/^nivel/.test(DND.norm(t.columns[0]))) return null;
+    return t.rows.map((r) => ({
+      level: parseInt(r[0], 10),
+      prepared: parseInt(r[prep], 10) || 0,
+      slots: t.columns
+        .map((c, k) => [c, r[k]])
+        .filter(([c]) => /Círculo de Magia \d$/.test(c))
+        .map(([, v]) => parseInt(v, 10) || 0),
+    }));
+  }
+
+  // Nomes que o livro usa fora do capítulo de magias para a mesma magia.
+  const SPELL_ALIASES = { "maos-ardentes": "maos-flamejantes" };
+
+  function spellcasting(cls, _, classes) {
+    const ids = classes.map((c) => c.id);
+    /*
+      "Defesa sem Armadura": CA = 10 + Des + os outros modificadores
+      citados no texto (o primeiro é sempre Destreza). Se o texto citar
+      "Escudo" junto de "ou empunhando", o escudo anula o benefício.
+    */
+    const ud = cls.features.find((f) =>
+      /^defesa sem armadura/.test(DND.norm(f.name)),
+    );
+    if (ud) {
+      const t = ud.text.map((p) => p.text).join(" ");
+      cls.unarmored = {
+        abilities: abilitiesIn(t).filter((a) => a !== "dex"),
+        shield: !/ou empunhando um escudo/i.test(t),
+      };
+    }
+    const own = castingIn(cls.features, ids);
+    if (own) cls.spellcasting = { ...own, list: cls.id };
+    for (const sub of cls.subclasses) {
+      const tables = sub.features.flatMap((f) => f.tables);
+      const sc = castingIn(sub.features, ids);
+      const progression = tables.map(casterTable).find(Boolean);
+      if (sc && progression)
+        sub.spellcasting = { ...sc, list: sc.list || cls.id, progression };
+      const lists = tables.map(spellTable).filter(Boolean);
+      if (lists.length) sub.spellLists = lists;
+    }
+  }
+
   function extractClasses(book, outline) {
     const chapter = outline.children.find(
       (c) => DND.norm(c.title) === "classes de personagem",
@@ -347,9 +483,38 @@
             ...features(book, sub, tables),
           };
         }),
+        optionGroups: node.children
+          .filter((c) => /^opcoes de/.test(DND.norm(c.title)))
+          .map((g) => ({
+            id: slug(g.title.replace(/^Opções de\s+/i, "")),
+            name: g.title.replace(/^Opções de\s+/i, ""),
+            options: g.children.map((o) => {
+              // Pré-requisito: linha(s) em itálico logo abaixo do nome.
+              const lines = DND.body(book, o, { own: false }).filter(
+                (l) => !isNoise(l),
+              );
+              let k = 0;
+              let pre = "";
+              while (k < lines.length && lines[k].italic && !lines[k].bold)
+                pre = DND.join(pre, lines[k++].text);
+              const text = DND.paragraphs(lines.slice(k));
+              const lv = /Nível (\d+)/.exec(pre);
+              return {
+                id: slug(o.title),
+                name: o.title,
+                ...(pre && { prerequisite: pre }),
+                ...(lv && { level: Number(lv[1]) }),
+                repeatable: text.some((p) =>
+                  /^repetivel/.test(DND.norm(p.lead || "")),
+                ),
+                text,
+              };
+            }),
+          })),
       });
     });
     classes.forEach(linkFeatures);
+    classes.forEach(spellcasting);
     return classes;
   }
 
@@ -999,7 +1164,7 @@
     name: "Livro do Jogador (2024)",
     // Versão do extrator: suba o número sempre que a leitura mudar, para
     // que os dados guardados no navegador (store.js) sejam relidos.
-    version: 1,
+    version: 2,
     edition: "2024",
     lang: "pt-BR",
     sha256: [
