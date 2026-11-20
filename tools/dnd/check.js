@@ -212,12 +212,145 @@ function expect(label, ok, detail = "") {
     `   ${feats.filter((f) => f.asi).length} com aumento de atributo · ${feats.filter((f) => f.repeatable).length} repetíveis · ${feats.filter((f) => f.prerequisite?.abilities).length} exigem atributo mínimo`,
   );
 
-  // Despejo de um item: --classe Nome, --antecedente Nome, --especie Nome, --talento Nome.
+  // ---------- Magias ----------
+  const spells = data.spells || [];
+  console.log("\n✨ Magias");
+  expect("391 magias", spells.length === 391, `${spells.length}`);
+  const incomplete = spells.filter(
+    (s) =>
+      s.level == null ||
+      !s.school ||
+      !s.classes?.length ||
+      !s.castingTime ||
+      !s.range ||
+      !s.duration ||
+      !s.text.length,
+  );
+  expect(
+    "toda magia tem círculo, escola, classes, tempo, alcance, duração e texto",
+    !incomplete.length,
+    incomplete.map((s) => s.name).join(", "),
+  );
+  const classIds = new Set(classes.map((c) => c.id));
+  const strange = [
+    ...new Set(
+      spells.flatMap((s) => s.classes || []).filter((c) => !classIds.has(c)),
+    ),
+  ];
+  expect("classes das magias existem", !strange.length, strange.join(", "));
+  // Quem conjura precisa ter magias em todos os círculos da sua tabela.
+  for (const c of classes) {
+    const cols = c.progression?.columns || [];
+    if (!cols.some((n) => /Magias Preparadas/.test(n))) continue;
+    const mine = spells.filter((s) => s.classes.includes(c.id));
+    const slots = cols.filter((n) => /Círculo de Magia \d$/.test(n)).length;
+    // O Bruxo usa a Magia de Pacto (até o 5º); 6º–9º vêm da Arcana Mística.
+    const maxLevel = slots || 9;
+    const missing = [];
+    for (let lv = 1; lv <= maxLevel; lv++)
+      if (!mine.some((s) => s.level === lv)) missing.push(lv);
+    const byLevel = Array.from(
+      { length: 10 },
+      (_, lv) => mine.filter((s) => s.level === lv).length,
+    );
+    expect(
+      `${c.name.padEnd(11)} ${mine.length} magias (por círculo: ${byLevel.join("/")})`,
+      !missing.length,
+      missing.length ? `sem magias de círculo ${missing.join(", ")}` : "",
+    );
+  }
+  const fireball = spells.find((s) => s.id === "bola-de-fogo");
+  expect(
+    "amostra: Bola de Fogo",
+    fireball?.level === 3 &&
+      fireball.school === "Evocação" &&
+      fireball.classes.includes("mago"),
+    fireball &&
+      `${fireball.level}º círculo, ${fireball.school}, ${fireball.range}, ${fireball.classes.join("/")}`,
+  );
+  console.log(
+    `   ${spells.filter((s) => s.ritual).length} rituais · ${spells.filter((s) => s.concentration).length} de concentração · ${spells.filter((s) => s.components.cost).length} com componente de custo · ${spells.filter((s) => s.higher).length} com efeito em círculo superior`,
+  );
+
+  // ---------- Equipamento ----------
+  const eq = data.equipment || {};
+  console.log("\n🛡  Equipamento");
+  const weapons = eq.weapons || [];
+  expect("38 armas", weapons.length === 38, `${weapons.length}`);
+  expect(
+    "10 propriedades e 8 maestrias",
+    eq.properties?.length === 10 && eq.masteries?.length === 8,
+    `${eq.properties?.length} e ${eq.masteries?.length}`,
+  );
+  const propIds = new Set((eq.properties || []).map((p) => p.id));
+  const mastIds = new Set((eq.masteries || []).map((p) => p.id));
+  const badWeapons = weapons.filter(
+    (w) =>
+      !/^\d+(d\d+)?$/.test(w.damage.dice) ||
+      !w.damage.type ||
+      !mastIds.has(w.mastery) ||
+      !w.properties.every((p) => propIds.has(p.id)) ||
+      !w.cost,
+  );
+  expect(
+    "armas com dano, maestria, propriedades e preço",
+    !badWeapons.length,
+    badWeapons.map((w) => w.name).join(", "),
+  );
+  const groupsOf = (list, key) =>
+    Object.entries(
+      list.reduce((m, x) => ((m[x[key]] = (m[x[key]] || 0) + 1), m), {}),
+    )
+      .map(([k, n]) => `${k} ${n}`)
+      .join(", ");
+  console.log(
+    `   ${groupsOf(
+      weapons.map((w) => ({ k: `${w.category}${w.ranged ? "/dist" : ""}` })),
+      "k",
+    )}`,
+  );
+  const armor = eq.armor || [];
+  expect(
+    "13 armaduras (3 leves, 5 médias, 4 pesadas, escudo)",
+    armor.length === 13,
+    groupsOf(armor, "category"),
+  );
+  const chain = armor.find((a) => a.id === "cota-de-malha");
+  expect(
+    "amostra: Cota de Malha",
+    chain?.ac.base === 16 &&
+      !chain.ac.dex &&
+      chain.strength === 13 &&
+      chain.stealthDisadvantage,
+    chain &&
+      `CA ${chain.ac.base}, For ${chain.strength}, ${chain.cost.amount} ${chain.cost.unit}`,
+  );
+  const tools = eq.tools || [];
+  expect(
+    "25 ferramentas com atributo",
+    tools.length === 25 && tools.every((t) => t.ability.length),
+    `${tools.length}`,
+  );
+  const gear = eq.gear || [];
+  const noDesc = gear.filter((g) => !g.text);
+  expect(
+    `${gear.length} itens de aventura, todos com verbete`,
+    gear.length >= 80 && !noDesc.length,
+    noDesc.map((g) => g.name).join(", "),
+  );
+  console.log(
+    `   variantes: ${Object.entries(eq.variants || {})
+      .map(([k, v]) => `${k} ${v.length}`)
+      .join(", ")}`,
+  );
+
+  // Despejo de um item: --classe Nome, --antecedente Nome, --especie Nome, --talento Nome, --magia Nome.
   const dumps = {
     "--classe": classes,
     "--antecedente": bgs,
     "--especie": species,
     "--talento": feats,
+    "--magia": spells,
   };
   for (const [flag, items] of Object.entries(dumps)) {
     if (!flags.has(flag)) continue;

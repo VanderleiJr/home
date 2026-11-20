@@ -688,6 +688,312 @@
     return out;
   }
 
+  // ---------- Magias ----------
+
+  /*
+    Cabeçalho em itálico: "3º Círculo, Evocação (Feiticeiro, Mago)" ou
+    "Truque de Evocação (Feiticeiro, Mago)". As classes viram ids (o
+    mesmo slug das classes), para que uma expansão possa acrescentar
+    magias à lista de uma classe da base só citando o nome dela.
+  */
+  function parseSpellHeader(text) {
+    const lv = /^(\d)[º°o] Círculo,\s*([^(]+?)\s*\(([^)]*)\)/.exec(text);
+    const cantrip = /^Truque de\s+([^(]+?)\s*\(([^)]*)\)/.exec(text);
+    if (!lv && !cantrip) return null;
+    const [level, school, classes] = lv
+      ? [Number(lv[1]), lv[2], lv[3]]
+      : [0, cantrip[1], cantrip[2]];
+    return { level, school, classes: list(classes).map(slug) };
+  }
+
+  // "V, S, M (uma joia no valor de 1.000 ou mais PO, que a magia consome)"
+  function parseComponents(value) {
+    const m = /\bM\s*\((.*)\)\s*$/.exec(value);
+    const cost = m && /([\d.]+)(?:\+|\s+ou mais)?\s*PO/.exec(m[1]);
+    return {
+      verbal: /(^|,\s*)V\b/.test(value),
+      somatic: /(^|,\s*)S\b/.test(value),
+      ...(m && {
+        material: m[1],
+        ...(cost && { cost: Number(cost[1].replace(/\./g, "")) }),
+        consumed: /consom|consumid/i.test(m[1]),
+      }),
+    };
+  }
+
+  function extractSpells(book, outline) {
+    const chapter = chapterOf(outline, "Magias");
+    const section = chapter?.children.find((n) =>
+      /^descricoes da/.test(DND.norm(n.title)),
+    );
+    if (!section) return [];
+    const out = [];
+    for (const node of section.children) {
+      const body = DND.body(book, node, { own: false });
+      const tables = body
+        .filter((l) => isTableTitle(l) && !l.inTable)
+        .map((l) => DND.table(book, l, { font: TABLE_FONT }))
+        .filter(Boolean);
+      const lines = body.filter((l) => !isNoise(l));
+      // Cabeçalho: tudo antes do bloco rotulado (quase sempre itálico,
+      // mas o livro tem magias com ele em letra reta).
+      let k = 0;
+      let head = "";
+      for (; k < lines.length && !TABLE_FONT.test(lines[k].font); k++)
+        head = DND.join(head, lines[k].text);
+      // Bloco rotulado (Tempo de Conjuração, Alcance…) logo depois.
+      let j = k;
+      while (j < lines.length && TABLE_FONT.test(lines[j].font)) j++;
+      const fields = DND.labeled(lines.slice(k, j));
+      const text = DND.paragraphs(lines.slice(j).filter((l) => !l.inTable));
+      const field = (re) =>
+        fields.find((f) => re.test(DND.norm(f.label)))?.value || "";
+      const time = field(/^tempo/);
+      const duration = field(/^duracao/);
+      const higher = text.find((p) =>
+        /^(usando um espaco de magia|aprimoramento de truque)/.test(
+          DND.norm(p.lead || ""),
+        ),
+      );
+      out.push({
+        id: slug(node.title),
+        name: node.title,
+        source: "phb2024",
+        page: node.page,
+        ...parseSpellHeader(head),
+        castingTime: time.replace(/\s*ou Ritual$/i, ""),
+        ritual: /\bRitual\b/.test(time),
+        range: field(/^alcance/),
+        components: parseComponents(field(/^componentes/)),
+        duration,
+        concentration: /^Concentração/.test(duration),
+        ...(higher && { higher: higher.text }),
+        text,
+        ...(tables.length && { tables }),
+      });
+    }
+    return out;
+  }
+
+  // ---------- Equipamento ----------
+
+  // "1.000 PO" → { amount: 1000, unit: "PO", cp: 100000 }; "Varia" → null.
+  const COIN = { PC: 1, PP: 10, PE: 50, PO: 100, PL: 1000 };
+  function parseCost(text) {
+    const m = /([\d.]+)\s*(PC|PP|PE|PO|PL)\b/.exec(text || "");
+    if (!m) return null;
+    const amount = Number(m[1].replace(/\./g, ""));
+    return { amount, unit: m[2], cp: amount * COIN[m[2]] };
+  }
+  // "0,5 kg" → 0.5; "150 g" → 0.15; "—" → 0. Sempre em quilos.
+  function parseWeight(text) {
+    const m = /([\d,]+)\s*(kg|g)\b/.exec(text || "");
+    if (!m) return 0;
+    const n = Number(m[1].replace(",", "."));
+    return m[2] === "g" ? n / 1000 : n;
+  }
+
+  /*
+    Tabela com subtítulos ("Armas Simples Corpo a Corpo", "Armadura Leve
+    (1 Minuto…)"): a linha de uma célula só abre um grupo, e cada item
+    leva o nome do grupo em que está.
+  */
+  function grouped(table) {
+    const out = [];
+    let group = "";
+    for (const r of table.rows) {
+      if (r.slice(1).every((c) => !c)) group = r[0];
+      else out.push({ group, cells: r });
+    }
+    return out;
+  }
+
+  // Propriedades: "Arremesso (Alcance 6/18)" → { id, name, detail }.
+  function parseProperties(text) {
+    if (!text || text === "—") return [];
+    const out = [];
+    let depth = 0;
+    let cur = "";
+    for (const ch of text + ",") {
+      if (ch === "(") depth++;
+      if (ch === ")") depth--;
+      if (ch === "," && depth === 0) {
+        if (cur.trim()) out.push(cur.trim());
+        cur = "";
+      } else cur += ch;
+    }
+    return out.map((p) => {
+      const m = /^(.+?)\s*\((.+)\)$/.exec(p);
+      const name = m ? m[1] : p;
+      return { id: slug(name), name, ...(m && { detail: m[2] }) };
+    });
+  }
+
+  function extractEquipment(book, outline) {
+    const chapter = chapterOf(outline, "Equipamento");
+    if (!chapter) return null;
+    const all = [];
+    (function walk(n) {
+      for (const c of n.children) {
+        all.push(c);
+        walk(c);
+      }
+    })(chapter);
+    const byTitle = (t) => all.find((n) => DND.norm(n.title) === DND.norm(t));
+    const entries = (t) =>
+      (byTitle(t)?.children || []).map((n) => ({
+        id: slug(n.title),
+        name: n.title,
+        page: n.page,
+        text: paragraphs(book, n, false),
+      }));
+
+    const weaponTable = tableNamed(book, "Armas");
+    const weapons = weaponTable
+      ? grouped(weaponTable).map(
+          ({ group, cells: [name, dmg, props, mastery, weight, cost] }) => {
+            const g = DND.norm(group);
+            const d = /^(\d+(?:d\d+)?)\s+(.+?),?$/.exec(dmg) || [, dmg, ""];
+            return {
+              id: slug(name),
+              name,
+              source: "phb2024",
+              category: g.includes("marcia") ? "martial" : "simple",
+              ranged: g.includes("distancia"),
+              group,
+              damage: { dice: d[1], type: d[2] },
+              properties: parseProperties(props.replace(/,$/, "")),
+              mastery: slug(mastery),
+              weight: parseWeight(weight),
+              cost: parseCost(cost),
+            };
+          },
+        )
+      : [];
+
+    const armorTable = tableNamed(book, "Armaduras");
+    const armor = armorTable
+      ? grouped(armorTable).map(
+          ({ group, cells: [name, ac, str, stealth, weight, cost] }) => {
+            const g = DND.norm(group);
+            const category = g.startsWith("escudo")
+              ? "shield"
+              : g.includes("leve")
+                ? "light"
+                : g.includes("media")
+                  ? "medium"
+                  : "heavy";
+            const max = /máx\.?\s*(\d+)/.exec(ac);
+            return {
+              id: slug(name),
+              name,
+              source: "phb2024",
+              category,
+              group,
+              // CA: base + Des (com teto) ou fixa; o escudo soma (+2).
+              ac: {
+                base: Number((/\d+/.exec(ac) || [0])[0]),
+                ...(category === "shield" && { bonus: true }),
+                dex: /Des/i.test(ac),
+                ...(max && { maxDex: Number(max[1]) }),
+              },
+              strength: Number((/\d+/.exec(str) || [0])[0]) || 0,
+              stealthDisadvantage: /desvantagem/i.test(stealth),
+              weight: parseWeight(weight),
+              cost: parseCost(cost),
+            };
+          },
+        )
+      : [];
+
+    // Ferramentas: o preço vem no próprio título ("… (8 PO)").
+    const tool = (kind) => (e) => {
+      const m = /^(.+?)\s*\(([^)]+)\)$/.exec(e.name);
+      const node = byTitle(e.name);
+      const fields = DND.labeled(
+        DND.body(book, node, { own: false }).filter(
+          (l) => TABLE_FONT.test(l.font) && !isNoise(l),
+        ),
+      );
+      return {
+        ...e,
+        id: slug(m ? m[1] : e.name),
+        name: m ? m[1] : e.name,
+        source: "phb2024",
+        kind,
+        cost: parseCost(m?.[2]),
+        ...(fields.length && { fields }),
+        ability: abilitiesIn(
+          fields.find((f) => /^atributo/.test(DND.norm(f.label)))?.value || "",
+        ),
+      };
+    };
+    const tools = [
+      ...entries("Ferramentas de Artesão").map(tool("artisan")),
+      ...entries("Outras Ferramentas").map(tool("other")),
+    ];
+
+    // Equipamento de aventura: peso e custo da tabela, texto do verbete.
+    const gearTable = tableNamed(book, "Equipamento de Aventura");
+    const descs = entries("Equipamento de Aventura");
+    const gear = gearTable
+      ? unfold(gearTable).rows.map(([name, weight, cost]) => {
+          // A tabela e o verbete nem sempre escrevem igual ("Pote, Ferro"
+          // × "Pote de Ferro", "Roupas, Fantasia" × "Fantasia"): compara
+          // as palavras, sem preposições, e aceita o verbete contido.
+          const words = (t) =>
+            DND.norm(t.replace(/\s*\(.*\)$/, ""))
+              .split(" ")
+              .filter((w) => !/^(de|do|da|dos|das)$/.test(w));
+          const mine = words(name);
+          const d =
+            descs.find((e) => words(e.name).join() === mine.join()) ||
+            descs.find((e) => words(e.name).every((w) => mine.includes(w)));
+          return {
+            id: slug(name),
+            name,
+            source: "phb2024",
+            weight: parseWeight(weight),
+            cost: parseCost(cost),
+            ...(d && { text: d.text, page: d.page }),
+          };
+        })
+      : [];
+
+    // Tabelas de variantes (focos, munição, símbolos sagrados).
+    const variants = {};
+    for (const [key, title] of [
+      ["arcaneFocus", "Focos Arcanos"],
+      ["druidicFocus", "Focos Druídicos"],
+      ["ammunition", "Munição"],
+      ["holySymbol", "Símbolos Sagrados"],
+    ]) {
+      const t = tableNamed(book, title);
+      if (t)
+        variants[key] = t.rows.map((r) => ({
+          id: slug(r[0]),
+          name: r[0],
+          weight: parseWeight(r[r.length - 2]),
+          cost: parseCost(r[r.length - 1]),
+          ...(r.length > 3 && {
+            values: Object.fromEntries(
+              t.columns.slice(1, -2).map((c, k) => [c, r[k + 1]]),
+            ),
+          }),
+        }));
+    }
+
+    return {
+      weapons,
+      armor,
+      tools,
+      gear,
+      variants,
+      properties: entries("Propriedades"),
+      masteries: entries("Propriedades de Maestria"),
+    };
+  }
+
   DND.registerSource({
     id: "phb2024",
     name: "Livro do Jogador (2024)",
@@ -699,7 +1005,6 @@
     tocPages: [9],
     skip: isFooter,
 
-    // As próximas etapas acrescentam magias e equipamento.
     extract(book) {
       fixDropCaps(book);
       const outline = DND.outline(book, { headings, skip: isFooter });
@@ -714,6 +1019,8 @@
         feats: extractFeats(book, outline),
         languages: extractLanguages(book),
         skills: extractSkills(book),
+        spells: extractSpells(book, outline),
+        equipment: extractEquipment(book, outline),
       };
     },
   });

@@ -80,7 +80,7 @@
         l.index = lines.length;
         lines.push(l);
       }
-      pages.push({ n, lines: pageLines });
+      pages.push({ n, lines: pageLines, width: items.width || 612 });
       if (onProgress && n % 10 === 0) {
         onProgress(n, doc.pageCount);
         // Devolve a vez ao navegador para a barra de progresso redesenhar.
@@ -255,12 +255,7 @@
       lastCol = col(l);
       const labeled = leadStart(l);
       prevLine = l;
-      if (
-        !cur ||
-        bullet ||
-        labeled ||
-        (indent && !(cur.bullet && !newCol))
-      ) {
+      if (!cur || bullet || labeled || (indent && !(cur.bullet && !newCol))) {
         cur = { text: bullet ? l.text.replace(/^[•●▪]\s*/, "") : l.text };
         if (bullet) cur.bullet = true;
         // Rótulo: os primeiros pedaços em negrito da linha ("Duração.").
@@ -307,13 +302,33 @@
   */
   DND.table = (book, title, { font, maxGap = 2.6 } = {}) => {
     const center = (it) => it.x + it.w / 2;
-    const all = book.pages[title.page - 1].lines.filter(
+    const page = book.pages[title.page - 1];
+    const mid = (page.width || 612) / 2;
+    let all = page.lines.filter(
       (l) =>
         l !== title &&
         l.y > title.y &&
         font.test(l.font) &&
         l.x >= title.x - 20,
     );
+    /*
+      Tabela da coluna esquerda: se nada da esquerda logo abaixo do título
+      passa do meio da página, ela cabe na coluna — e a coluna direita (outra
+      magia, outro texto) fica de fora.
+    */
+    const near = all.filter((l) => l.y < title.y + 40 && l.x < mid - 20);
+    // Texto na coluna direita já correndo na altura do título = outra
+    // coluna; tabela larga não tem nada ao lado do seu título.
+    const beside = page.lines.some(
+      (l) => l.x >= mid - 20 && l.y > title.y - 25 && l.y < title.y + 5,
+    );
+    if (
+      title.x < mid - 20 &&
+      beside &&
+      near.length &&
+      near.every((l) => l.end < mid + 10)
+    )
+      all = all.filter((l) => l.x < mid - 20);
     all.sort((a, b) => a.y - b.y);
     // Cabeçalho: linhas em negrito antes da primeira linha comum.
     const header = [];
@@ -359,7 +374,12 @@
     */
     const dashes = (it) => /^[—–-](\s+[—–-])+$/.test(it.str.trim());
     const cols = [];
+    // Linha de um pedaço só no meio de linhas com vários ("Armas Simples
+    // Corpo a Corpo") é subtítulo: atravessaria colunas, então fica de fora.
+    const solid = (c) => c.items.filter((it) => it.str.trim()).length;
+    const multi = clusters.filter((c) => solid(c) > 1).length;
     const spans = clusters
+      .filter((c) => solid(c) > 1 || multi < clusters.length / 2)
       .flatMap((c) => c.items)
       .filter((it) => it.str.trim() && !dashes(it))
       .map((it) => [it.x, it.x + it.w])
@@ -426,9 +446,17 @@
             continue;
           }
         }
-        const col =
-          cols.find((c) => center(it) >= c.x1 - 2 && center(it) <= c.x2 + 2) ||
-          nearest(center(it));
+        // Subtítulo (pedaço único e largo) alinhado à 1ª coluna fica nela,
+        // mesmo que o seu centro caia sobre as colunas seguintes.
+        const subtitle =
+          solid(cl) === 1 &&
+          it.x + it.w > cols[0].x2 + 6 &&
+          Math.abs(it.x - cols[0].x1) < 6;
+        const col = subtitle
+          ? cols[0]
+          : cols.find(
+              (c) => center(it) >= c.x1 - 2 && center(it) <= c.x2 + 2,
+            ) || nearest(center(it));
         const k = cols.indexOf(col);
         cells[k] = DND.join(cells[k], it.str.trim());
       }
@@ -457,7 +485,19 @@
       for (const it of l.items) {
         const s = it.str.trim();
         if (!s) continue;
-        if (it.bold) fields.push({ label: s, value: "" });
+        // Rótulo e valor às vezes vêm juntos, todo em negrito
+        // ("Alcance: 1,5 km"): o que vem depois dos dois-pontos é valor.
+        const colon = s.indexOf(":");
+        const open = fields.at(-1);
+        // Valor também em negrito logo após "Rótulo:" vazio: ainda é valor.
+        if (it.bold && open && /:$/.test(open.label) && !open.value)
+          open.value = s;
+        else if (it.bold && colon > 0 && colon < s.length - 1)
+          fields.push({
+            label: s.slice(0, colon + 1),
+            value: s.slice(colon + 1).trim(),
+          });
+        else if (it.bold) fields.push({ label: s, value: "" });
         else if (fields.length) {
           const f = fields[fields.length - 1];
           f.value = DND.join(f.value, s);
