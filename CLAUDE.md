@@ -14,6 +14,7 @@ Personal home page linking small open-source learning projects built together. E
 - Every page (home and projects) loads `site/assets/scene.css` + `scene.js` + `i18n.js` (in `<head>`, no defer) before its own CSS: the shared background scene (sky follows local time: sun by day, moon by night, both fixed at the horizon center; `--daylight` 0–1 and `.is-night` on `<html>`, `?hora=HH:MM` to preview), its animation phase sync, the cross-page view transition and translation. Never fork the scene into a page CSS, or page switches visibly jump.
 - The home car is a 3D model in `home.js` projected with the floor's CSS geometry (`--floor-tilt`, `.floor` perspective): change the floor only through those, or the car drifts off the road.
   Its headlight beams and tail-light glow fade in with `--daylight`.
+- `tools/vlibras/` (outside `site/`, Node only, never shipped): `npm run vlibras` downloads the VLibras dictionary bundles, reads the Unity AnimationClips and regenerates the `SIGN_TABLE` block of `site/projects/libras/signs.js`. Edit the generator, not the generated rows; keep the VLibras credit on the libras page.
 - `.github/workflows/pages.yml` lints, then deploys `site/` to GitHub Pages on push to `main`.
 - Served under `/home/` (repo isn't `<user>.github.io`): use relative URLs; root-absolute paths like `/css/style.css` break.
 - Run `npm run lint` after editing HTML. Prettier runs automatically via a PostToolUse hook.

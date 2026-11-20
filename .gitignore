@@ -3,3 +3,6 @@ node_modules/
 # Claude Code (pessoal)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Pacotes baixados do VLibras (tools/vlibras/build.js)
+tools/vlibras/.cache/
