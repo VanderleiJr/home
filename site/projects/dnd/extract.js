@@ -1,0 +1,619 @@
+/*
+  extract.js — ferramentas genéricas para transformar o texto de um
+  livro (vindo do pdf.js) em dados. Nada aqui conhece um livro em
+  particular: cada livro é uma "fonte" (sources/<id>.js) que se registra
+  com DND.registerSource e usa estas ferramentas com as suas regras.
+
+  Assim, uma expansão nova é só mais um arquivo em sources/, sem mexer
+  no motor nem na interface.
+
+  Funciona no navegador (global DND) e no Node (tools/dnd/check.js).
+*/
+(function (root) {
+  "use strict";
+
+  const DND = (root.DND = root.DND || {});
+  DND.sources = DND.sources || [];
+
+  // Cada fonte declara: id, nome, sha256 (lista de versões aceitas do
+  // PDF) e extract(book) → dados no formato comum do d&d.exe.
+  DND.registerSource = (source) => DND.sources.push(source);
+  DND.identify = (hash) => DND.sources.find((s) => s.sha256.includes(hash));
+
+  // Normaliza para comparar títulos: sem acento, sem pontuação, minúsculo.
+  // normalize("NFD") separa "é" em "e" + acento, e o regex tira o acento.
+  DND.norm = (s) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .toLowerCase();
+
+  // "Estilo" de uma linha: fonte + tamanho. É o que diferencia um título
+  // de capítulo de um parágrafo, já que o PDF não tem tags de estrutura.
+  DND.style = (line) => `${line.font}@${line.size}`;
+
+  /*
+    Ordem de leitura de uma página em duas colunas. O stream do PDF segue
+    as camadas do diagramador, que nem sempre é a ordem de leitura. Então
+    ordenamos pela geometria: linhas que atravessam o meio da página
+    (títulos, tabelas largas) cortam a página em faixas; dentro de cada
+    faixa, lê-se a coluna esquerda de cima para baixo e depois a direita.
+  */
+  DND.readingOrder = (lines, width = 612) => {
+    const mid = width / 2;
+    const wide = (l) => l.x < mid - 10 && l.end > mid + 10;
+    const cuts = lines.filter(wide).map((l) => l.y);
+    const band = (l) =>
+      cuts.filter((y) => y < l.y).length * 2 + (wide(l) ? 1 : 0);
+    // Coluna direita começa um pouco antes do meio (x≈303 em 612): folga de 20.
+    const key = (l) => [
+      band(l),
+      wide(l) ? 0 : l.x < mid - 20 ? 0 : 1,
+      l.y,
+      l.x,
+    ];
+    return lines
+      .map((l) => ({ l, k: key(l) }))
+      .sort((a, b) => {
+        for (let i = 0; i < 4; i++)
+          if (a.k[i] !== b.k[i]) return a.k[i] - b.k[i];
+        return 0;
+      })
+      .map((e) => e.l);
+  };
+
+  /*
+    Lê todas as páginas em linhas. Cada linha ganha a página e um índice
+    global (ordem de leitura do livro inteiro), útil para recortar o
+    texto entre dois títulos. onProgress(feitas, total) alimenta a barra.
+  */
+  DND.readBook = async (doc, onProgress) => {
+    const pages = [];
+    const lines = [];
+    for (let n = 1; n <= doc.pageCount; n++) {
+      const items = await doc.pageItems(n);
+      const pageLines = DND.readingOrder(root.PDF.toLines(items), items.width);
+      for (const l of pageLines) {
+        l.page = n;
+        l.index = lines.length;
+        lines.push(l);
+      }
+      pages.push({ n, lines: pageLines, width: items.width || 612 });
+      if (onProgress && n % 10 === 0) {
+        onProgress(n, doc.pageCount);
+        // Devolve a vez ao navegador para a barra de progresso redesenhar.
+        await new Promise((r) => setTimeout(r));
+      }
+    }
+    return { pages, lines };
+  };
+
+  /*
+    Monta o mapa (outline) do livro a partir dos estilos de título.
+    headings: [{ level, test(line) }] — o primeiro teste que bater decide
+    o nível. skip(line): linhas a ignorar (cabeçalhos de página etc.).
+    Títulos que quebram em várias linhas ("Características de" / "Classe
+    de Paladino") são unidos quando vêm em sequência, no mesmo estilo.
+  */
+  DND.outline = (book, { headings, skip = () => false }) => {
+    const found = [];
+    let prev = null;
+    for (const line of book.lines) {
+      if (skip(line)) continue;
+      const rule = headings.find((h) => h.test(line));
+      if (!rule) {
+        prev = null;
+        continue;
+      }
+      const continues =
+        prev &&
+        prev.level === rule.level &&
+        prev.style === DND.style(line) &&
+        prev.page === line.page &&
+        line.y - prev.lastY > 0 &&
+        line.y - prev.lastY < line.size * 1.6;
+      if (continues) {
+        // Mesmo texto repetido (sombra/contorno desenhado duas vezes): ignora.
+        if (line.text !== prev.lines[prev.lines.length - 1]) {
+          prev.title += " " + line.text;
+          prev.lines.push(line.text);
+        }
+        prev.lastY = line.y;
+        continue;
+      }
+      // Título repetido logo em seguida (sombra desenhada duas vezes, ou
+      // título que atravessa a página dupla): fica só o primeiro.
+      const repeated = found.some(
+        (h) =>
+          h.title === line.text &&
+          h.level === rule.level &&
+          line.page - h.page <= 1,
+      );
+      if (repeated) {
+        prev = null;
+        continue;
+      }
+      prev = {
+        level: rule.level,
+        title: line.text,
+        page: line.page,
+        index: line.index,
+        style: DND.style(line),
+        lastY: line.y,
+        lines: [line.text],
+      };
+      found.push(prev);
+    }
+
+    /*
+      O título de capítulo nem sempre é desenhado primeiro na página (o
+      stream segue a ordem das camadas do diagramador). Ele é puxado para
+      o começo da sua página, antes das seções que dividem a página com ele.
+    */
+    for (const h of found) {
+      if (h.level === 0)
+        h.index = Math.min(h.index, book.pages[h.page - 1].lines[0].index);
+    }
+    found.sort((a, b) => a.index - b.index || a.level - b.level);
+
+    // Árvore: cada título "adota" os seguintes de nível maior, e o seu
+    // conteúdo vai até o próximo título de nível igual ou menor.
+    const rootNode = { level: -1, title: "", children: [], index: 0 };
+    const stack = [rootNode];
+    for (const h of found) {
+      while (stack[stack.length - 1].level >= h.level) stack.pop();
+      const node = { ...h, children: [] };
+      delete node.lines;
+      delete node.lastY;
+      stack[stack.length - 1].children.push(node);
+      stack.push(node);
+    }
+    const close = (node, end) => {
+      node.end = end;
+      node.children.forEach((c, i) =>
+        close(
+          c,
+          i + 1 < node.children.length ? node.children[i + 1].index : end,
+        ),
+      );
+    };
+    close(rootNode, book.lines.length);
+    return rootNode;
+  };
+
+  // Procura, em profundidade, o primeiro nó cujo título bate.
+  DND.find = (node, test) => {
+    for (const c of node.children || []) {
+      if (test(c)) return c;
+      const deep = DND.find(c, test);
+      if (deep) return deep;
+    }
+    return null;
+  };
+
+  // Linhas do corpo de uma seção (entre o título e o primeiro filho).
+  DND.body = (book, node, { skip = () => false, own = true } = {}) => {
+    const end = own && node.children.length ? node.children[0].index : node.end;
+    return book.lines.slice(node.index + 1, end).filter((l) => !skip(l));
+  };
+
+  // Cola duas linhas de texto: palavra partida no fim da linha ("me-" +
+  // "tros") volta a ser uma só; hífen de palavra composta ("usá-la") fica,
+  // porque não está no fim da linha.
+  DND.join = (a, b) => {
+    if (!a) return b;
+    // Pontuação colada na palavra anterior: "Arcana" + "." vira "Arcana.".
+    if (/^[.,;:!?)]/.test(b)) return a + b;
+    // Hífen de quebra que veio num pedaço sozinho ("Vi" "-" "rotes").
+    if (b === "-" && /[a-zà-öø-ÿ]$/i.test(a)) return a + "-";
+    if (/[a-zà-öø-ÿ]-$/i.test(a) && /^[a-zà-öø-ÿ]/.test(b))
+      return a.slice(0, -1) + b;
+    return a + " " + b;
+  };
+
+  /*
+    Junta linhas em parágrafos. Parágrafo novo quando a linha tem recuo
+    em relação à margem da sua coluna ou começa com "•". A margem de cada
+    coluna (esquerda/direita da página) é o menor x visto nela; dentro de
+    um item com "•", a linha recuada é só a continuação do item.
+    Cada parágrafo diz se começa com um rótulo em negrito ("Duração.").
+  */
+  DND.paragraphs = (lines) => {
+    const margins = new Map();
+    const col = (l) => `${l.page}:${l.x < 286 ? 0 : 1}`;
+    for (const l of lines)
+      margins.set(col(l), Math.min(margins.get(col(l)) ?? Infinity, l.x));
+    const out = [];
+    let cur = null;
+    let lastCol = null;
+    let prevX = null;
+    let prevLine = null;
+    // Linha que abre com um rótulo em negrito ("Gnomo das Rochas.") é
+    // parágrafo novo mesmo sem recuo — desde que a linha anterior não
+    // termine em negrito (aí seria um rótulo longo quebrado em duas).
+    const leadStart = (l) => {
+      const its = (l.items || []).filter((it) => it.str.trim());
+      if (!its[0]?.bold || prevLine?.items?.at(-1)?.bold) return false;
+      const run = [];
+      for (const it of its) {
+        if (!it.bold) break;
+        run.push(it.str);
+      }
+      return /[.:]$/.test(run.join("").trim()) && run.length < its.length;
+    };
+    for (const l of lines) {
+      const offset = l.x - margins.get(col(l));
+      // Recuo grande repetido em linhas seguidas não é parágrafo novo: é o
+      // texto contornando uma letra capitular.
+      const wrap = offset > 16 && Math.abs(l.x - prevX) < 1;
+      prevX = l.x;
+      const indent = offset > 4 && !wrap;
+      const bullet = /^[•●▪]/.test(l.text);
+      const newCol = col(l) !== lastCol;
+      lastCol = col(l);
+      const labeled = leadStart(l);
+      prevLine = l;
+      if (!cur || bullet || labeled || (indent && !(cur.bullet && !newCol))) {
+        cur = { text: bullet ? l.text.replace(/^[•●▪]\s*/, "") : l.text };
+        if (bullet) cur.bullet = true;
+        // Rótulo: os primeiros pedaços em negrito da linha ("Duração.").
+        const lead = [];
+        let italic = false;
+        for (const it of l.items || []) {
+          if (!it.bold) break;
+          lead.push(it.str);
+          italic ||= it.italic;
+        }
+        const leadText = lead
+          .join("")
+          .trim()
+          .replace(/^[•●▪]\s*/, "");
+        // O texto fica sem o rótulo: quem exibe decide como destacá-lo.
+        if (
+          leadText &&
+          cur.text.startsWith(leadText) &&
+          leadText.length < cur.text.length
+        ) {
+          cur.lead = leadText;
+          // Negrito itálico (traço, benefício) × negrito reto (opção dentro
+          // de um traço, como as linhagens do Gnomo): quem lê decide.
+          if (italic) cur.leadItalic = true;
+          cur.text = cur.text.slice(leadText.length).trim();
+        }
+        out.push(cur);
+        continue;
+      }
+      cur.text = DND.join(cur.text, l.text);
+    }
+    return out;
+  };
+
+  /*
+    Tabela: a partir da linha de título, lê o cabeçalho (linhas em
+    negrito) e as linhas de dados abaixo, na fonte das tabelas (opção
+    font). As colunas saem dos dados e os nomes, do cabeçalho; cada
+    célula vai para a coluna sob ela. Duas armadilhas tratadas:
+    - célula que quebra em duas linhas: a linha sem a 1ª coluna é
+      continuação da anterior;
+    - "— — —" grudados atravessando colunas: viram uma célula por coluna.
+    As linhas usadas ficam marcadas (inTable) para não irem para o texto.
+  */
+  DND.table = (book, title, { font, maxGap = 2.6 } = {}) => {
+    const center = (it) => it.x + it.w / 2;
+    const page = book.pages[title.page - 1];
+    const mid = (page.width || 612) / 2;
+    let all = page.lines.filter(
+      (l) =>
+        l !== title &&
+        l.y > title.y &&
+        font.test(l.font) &&
+        l.x >= title.x - 20,
+    );
+    /*
+      Tabela da coluna esquerda: se nada da esquerda logo abaixo do título
+      passa do meio da página, ela cabe na coluna — e a coluna direita (outra
+      magia, outro texto) fica de fora.
+    */
+    const near = all.filter((l) => l.y < title.y + 40 && l.x < mid - 20);
+    // Texto na coluna direita já correndo na altura do título = outra
+    // coluna; tabela larga não tem nada ao lado do seu título.
+    const beside = page.lines.some(
+      (l) => l.x >= mid - 20 && l.y > title.y - 25 && l.y < title.y + 5,
+    );
+    if (
+      title.x < mid - 20 &&
+      beside &&
+      near.length &&
+      near.every((l) => l.end < mid + 10)
+    )
+      all = all.filter((l) => l.x < mid - 20);
+    all.sort((a, b) => a.y - b.y);
+    // Cabeçalho: linhas em negrito antes da primeira linha comum.
+    const header = [];
+    let i = 0;
+    for (; i < all.length && all[i].bold; i++) {
+      const prev = header[header.length - 1];
+      if (prev && all[i].y - prev.y > 30) break;
+      // Do tamanho do título (ou maior) = título de outra tabela ao lado.
+      if (all[i].size >= title.size) continue;
+      header.push(all[i]);
+    }
+    if (!header.length) return null;
+    const headSize = Math.max(...header.map((l) => l.size));
+    const hItems = header.flatMap((l) =>
+      l.items.map((it) => ({ ...it, y: l.y })),
+    );
+    const minX = Math.min(...hItems.map((it) => it.x)) - 20;
+    const maxX = Math.max(...hItems.map((it) => it.x + it.w)) + 30;
+
+    /*
+      Linhas de dados, agrupadas por y (pedaços da mesma altura = mesma
+      linha). "dx" e "yOff" deslocam uma coluna de continuação (veja
+      abaixo) para cima das colunas originais e depois delas.
+    */
+    const used = [...header, title];
+    const clusters = [];
+    let firstX = null;
+    function gather(lines, fromY, dx = 0, yOff = 0) {
+      let lastY = fromY;
+      for (const l of lines) {
+        if (l.y <= fromY) continue;
+        const x = l.x - dx;
+        // Negrito no meio dos dados é cabeçalho de outra coisa, exceto
+        // quando a linha é recuada: aí é continuação de uma célula que
+        // começa com um termo em negrito ("Unicórnio. Veja…").
+        if (l.bold && !(firstX != null && x > firstX + 10)) continue;
+        if (x > maxX || x < minX) continue;
+        if (l.y - lastY > l.size * maxGap) break;
+        // Letra menor que a do cabeçalho: nota de rodapé ("*Primordial…"), fim.
+        if (l.size < headSize - 1.5) break;
+        lastY = l.y;
+        firstX ??= x;
+        used.push(l);
+        const items = l.items.map((it) => ({ ...it, x: it.x - dx }));
+        const y = l.y + yOff;
+        const c = clusters.find((c) => Math.abs(c.y - y) < 2);
+        if (c) c.items.push(...items);
+        else clusters.push({ y, items });
+      }
+    }
+    gather(all.slice(i), header[header.length - 1].y);
+    if (!clusters.length) return null;
+
+    /*
+      Tabela longa continua nas colunas seguintes (e na outra página),
+      reabrindo com o mesmo cabeçalho no topo e sem título ("1d100
+      Efeito"). Segue coluna a coluna enquanto a próxima começar assim.
+    */
+    if (header.length === 1) {
+      const head = header[0];
+      const side = (l, pageWidth) =>
+        l.x < (pageWidth || 612) / 2 - 20 ? 0 : 1;
+      let slot = title.page * 2 + side(head, page.width);
+      for (let next = slot + 1; next <= slot + 6; next++) {
+        const pg = book.pages[(next >> 1) - 1];
+        if (!pg) break;
+        const inCol = pg.lines.filter((l) => side(l, pg.width) === (next & 1));
+        const cont = inCol.find(
+          (l) => l.bold && l.text === head.text && !l.inTable,
+        );
+        // Só vale se for a primeira coisa da coluna (nada acima dela além
+        // do cabeçalho da página): senão é outra tabela igual, com título.
+        if (!cont || inCol.some((l) => l.y > 30 && l.y < cont.y - 2)) break;
+        used.push(cont);
+        const lines = inCol
+          .filter((l) => l.y > cont.y && font.test(l.font))
+          .sort((a, b) => a.y - b.y);
+        gather(lines, cont.y, cont.x - head.x, (next - slot) * 10000);
+      }
+    }
+
+    /*
+      Colunas: saem dos dados, onde as células vêm sempre bem separadas.
+      Pedaços de linhas diferentes que se sobrepõem na horizontal são da
+      mesma coluna (união de intervalos). "— — —" grudados ficam de fora,
+      porque atravessam várias colunas.
+    */
+    const dashes = (it) => /^[—–-](\s+[—–-])+$/.test(it.str.trim());
+    const cols = [];
+    // Linha de um pedaço só no meio de linhas com vários ("Armas Simples
+    // Corpo a Corpo") é subtítulo: atravessaria colunas, então fica de fora.
+    const solid = (c) => c.items.filter((it) => it.str.trim()).length;
+    const multi = clusters.filter((c) => solid(c) > 1).length;
+    const spans = clusters
+      .filter((c) => solid(c) > 1 || multi < clusters.length / 2)
+      .flatMap((c) => c.items)
+      .filter((it) => it.str.trim() && !dashes(it))
+      .map((it) => [it.x, it.x + it.w])
+      .sort((a, b) => a[0] - b[0]);
+    for (const [x1, x2] of spans) {
+      const last = cols[cols.length - 1];
+      if (last && x1 <= last.x2 + 1) last.x2 = Math.max(last.x2, x2);
+      else cols.push({ x1, x2 });
+    }
+    for (const c of cols) {
+      c.center = (c.x1 + c.x2) / 2;
+      c.words = [];
+    }
+    const nearest = (x) =>
+      cols.reduce((best, c) =>
+        Math.abs(c.center - x) < Math.abs(best.center - x) ? c : best,
+      );
+
+    /*
+      Nomes das colunas: rótulos que cobrem vários outros abaixo
+      ("Espaços de Magia por Círculo" sobre 1…9) são grupo. Os demais são
+      partidos em palavras, e cada palavra vai para a coluna sob ela — a
+      posição de cada palavra é estimada pela proporção de letras, o que
+      separa "Proficiência Características" grudados num pedaço só.
+    */
+    const isGroup = (a) =>
+      hItems.filter(
+        (b) => b !== a && b.y > a.y && center(b) > a.x && center(b) < a.x + a.w,
+      ).length >= 2;
+    const groups = hItems.filter(isGroup);
+    for (const it of hItems.filter((h) => !isGroup(h))) {
+      const text = it.str;
+      let pos = 0;
+      for (const word of text.split(/(\s+)/)) {
+        const mid = it.x + ((pos + word.length / 2) / text.length) * it.w;
+        pos += word.length;
+        if (!word.trim()) continue;
+        const col =
+          cols.find((c) => mid >= c.x1 - 6 && mid <= c.x2 + 6) || nearest(mid);
+        col.words.push({ word, y: it.y, x: mid });
+      }
+    }
+    for (const c of cols) {
+      const group = groups.find((g) => c.center > g.x && c.center < g.x + g.w);
+      const name = c.words
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .map((w) => w.word)
+        .join(" ");
+      c.name = group ? `${group.str.trim()} ${name}`.trim() : name;
+    }
+
+    // Células: cada pedaço vai para a coluna sob ele; "— — —" é repartido.
+    const rows = [];
+    for (const cl of clusters.sort((a, b) => a.y - b.y)) {
+      const cells = cols.map(() => "");
+      for (const it of cl.items.sort((a, b) => a.x - b.x)) {
+        const tokens = it.str.trim().split(/\s+/);
+        if (dashes(it)) {
+          const inside = cols.filter(
+            (c) => c.center >= it.x - 2 && c.center <= it.x + it.w + 2,
+          );
+          if (inside.length === tokens.length) {
+            inside.forEach((c, k) => (cells[cols.indexOf(c)] = tokens[k]));
+            continue;
+          }
+        }
+        // Subtítulo (pedaço único e largo) alinhado à 1ª coluna fica nela,
+        // mesmo que o seu centro caia sobre as colunas seguintes.
+        const subtitle =
+          solid(cl) === 1 &&
+          it.x + it.w > cols[0].x2 + 6 &&
+          Math.abs(it.x - cols[0].x1) < 6;
+        const col = subtitle
+          ? cols[0]
+          : cols.find(
+              (c) => center(it) >= c.x1 - 2 && center(it) <= c.x2 + 2,
+            ) || nearest(center(it));
+        const k = cols.indexOf(col);
+        cells[k] = DND.join(cells[k], it.str.trim());
+      }
+      // Linha sem a 1ª coluna: continuação da célula de cima.
+      if (cells[0] || !rows.length) rows.push(cells);
+      else {
+        const prev = rows[rows.length - 1];
+        cells.forEach((v, k) => v && (prev[k] = DND.join(prev[k], v)));
+      }
+    }
+    for (const l of used) l.inTable = true;
+    return {
+      title: title.text.replace(/\.$/, ""),
+      page: title.page,
+      columns: cols.map((c) => c.name),
+      rows,
+    };
+  };
+
+  // Lista "Rótulo valor" (como os Traços Básicos de uma classe): pedaço
+  // em negrito abre um campo novo; o resto (e as linhas seguintes sem
+  // negrito) é o valor.
+  DND.labeled = (lines) => {
+    const fields = [];
+    for (const l of lines) {
+      for (const it of l.items) {
+        const s = it.str.trim();
+        if (!s) continue;
+        // Rótulo e valor às vezes vêm juntos, todo em negrito
+        // ("Alcance: 1,5 km"): o que vem depois dos dois-pontos é valor.
+        const colon = s.indexOf(":");
+        const open = fields.at(-1);
+        // Valor também em negrito logo após "Rótulo:" vazio: ainda é valor.
+        if (it.bold && open && /:$/.test(open.label) && !open.value)
+          open.value = s;
+        else if (it.bold && colon > 0 && colon < s.length - 1)
+          fields.push({
+            label: s.slice(0, colon + 1),
+            value: s.slice(colon + 1).trim(),
+          });
+        else if (it.bold) fields.push({ label: s, value: "" });
+        else if (fields.length) {
+          const f = fields[fields.length - 1];
+          f.value = DND.join(f.value, s);
+        }
+      }
+      l.inTable = true;
+    }
+    return fields;
+  };
+
+  // Lê o sumário: linhas "Título ........ 42". O recuo diz o nível.
+  DND.parseToc = (book, pages) => {
+    const entries = [];
+    for (const n of pages) {
+      for (const l of book.pages[n - 1].lines) {
+        const m = /^(.+?)\s*\.{3,}\s*(\d+)$/.exec(l.text);
+        if (m)
+          entries.push({
+            title: m[1].trim(),
+            printed: Number(m[2]),
+            x: l.x,
+            page: n,
+          });
+      }
+    }
+    // Recuo relativo à coluna: a menor margem de cada coluna é o nível 0.
+    const cols = [...new Set(entries.map((e) => Math.round(e.x / 150)))];
+    for (const c of cols) {
+      const inCol = entries.filter((e) => Math.round(e.x / 150) === c);
+      const min = Math.min(...inCol.map((e) => e.x));
+      for (const e of inCol) e.level = e.x - min > 4 ? 1 : 0;
+    }
+    return entries;
+  };
+
+  /*
+    Junta os dados de vários livros num só conjunto, que é o que o
+    criador usa. Listas são somadas (cada item já traz o seu "source");
+    item com o mesmo id de outro livro substitui o anterior (uma errata
+    ou edição nova). Subclasse de uma expansão sem a classe no próprio
+    livro ("class": "mago") entra na classe da base com esse id.
+  */
+  DND.merge = (datasets) => {
+    const out = { equipment: {} };
+    const add = (list, items) => {
+      for (const item of items || []) {
+        const k =
+          item.id == null ? -1 : list.findIndex((x) => x.id === item.id);
+        if (k >= 0) list[k] = item;
+        else list.push(item);
+      }
+      return list;
+    };
+    for (const data of datasets) {
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "equipment" && value)
+          for (const [k, v] of Object.entries(value))
+            out.equipment[k] = Array.isArray(v)
+              ? add(out.equipment[k] || [], v)
+              : { ...out.equipment[k], ...v };
+        else if (key === "subclasses")
+          continue; // tratado abaixo
+        else if (Array.isArray(value)) out[key] = add(out[key] || [], value);
+      }
+    }
+    for (const data of datasets)
+      for (const sub of data.subclasses || []) {
+        const cls = out.classes?.find((c) => c.id === sub.class);
+        if (cls) add(cls.subclasses, [sub]);
+      }
+    return out;
+  };
+
+  if (typeof module === "object" && module.exports) module.exports = DND;
+})(globalThis);

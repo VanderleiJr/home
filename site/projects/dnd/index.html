@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>d&amp;d.exe ✦ Vand Jr</title>
+    <meta
+      name="description"
+      content="Criador de personagem de D&amp;D 2024 que lê o seu próprio PDF do Livro do Jogador, direto no navegador. HTML, CSS e JavaScript puro."
+      data-i18n-attr="content:dnd.description"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐉</text></svg>"
+    />
+    <!-- Cenário e tradução compartilhados com todas as páginas. -->
+    <link rel="stylesheet" href="../../assets/scene.css" />
+    <!-- Sem defer: precisam rodar antes da primeira pintura (veja os arquivos). -->
+    <script src="../../assets/scene.js"></script>
+    <!-- data-lang: página só em português, como o livro (veja o i18n.js). -->
+    <script src="../../assets/i18n.js" data-lang="pt-BR"></script>
+    <!-- Visual Win98 compartilhado (janelas, botões, barra de tarefas). -->
+    <link rel="stylesheet" href="../../assets/win98.css" />
+    <link rel="stylesheet" href="dnd.css" />
+    <!-- Arrastar, minimizar e relógio: comportamento compartilhado das janelas. -->
+    <script src="../../assets/desktop.js" defer></script>
+    <!-- Leitor de PDF próprio (sem bibliotecas): só extrai o texto. -->
+    <script src="pdf.js" defer></script>
+    <!-- Ferramentas genéricas de extração + uma "fonte" por livro suportado. -->
+    <script src="extract.js" defer></script>
+    <script src="sources/phb2024.js" defer></script>
+    <!-- Cache dos dados extraídos (IndexedDB), para não reler o PDF. -->
+    <script src="store.js" defer></script>
+    <!-- Matemática das regras (modificadores, PV, CA, magias): sem dados do livro. -->
+    <script src="rules.js" defer></script>
+    <!-- Assistente: escolhas do personagem, etapa por etapa. -->
+    <script src="wizard.js" defer></script>
+    <script src="dnd.js" defer></script>
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true">
+      <div class="sun"></div>
+      <div class="moon"></div>
+      <div class="floor"><div class="plane"></div></div>
+    </div>
+
+    <!--
+      Nenhum texto do livro mora aqui: a página é só o "motor". O conteúdo
+      (classes, magias…) vem do PDF que você escolhe, lido no seu navegador.
+    -->
+    <main class="desktop desktop-flow">
+      <section class="window win-book" aria-labelledby="book-title">
+        <div class="titlebar">
+          <h1 class="titlebar-text" id="book-title">🐉 d&amp;d.exe</h1>
+          <div class="titlebar-controls">
+            <!-- O "fechar" é um link: sai do criador e volta para a página inicial. -->
+            <a
+              class="btn btn-close"
+              href="../../"
+              aria-label="Fechar e voltar à página inicial"
+              title="Voltar à página inicial"
+              data-i18n-attr="aria-label:dnd.close, title:dnd.back"
+            ></a>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <p data-i18n="dnd.intro">
+            Crie seu personagem de D&amp;D 2024 a partir do seu Livro do Jogador
+            em PDF.
+          </p>
+
+          <!--
+            A <label> inteira é a área de soltar: clicar nela abre o seletor
+            do <input type="file"> (que fica escondido), e o JS só cuida do
+            arrastar e soltar. accept filtra o seletor para PDFs.
+          -->
+          <label class="field dropzone">
+            <input
+              class="visually-hidden"
+              type="file"
+              accept="application/pdf,.pdf"
+              data-book-input
+            />
+            <span class="dropzone-icon" aria-hidden="true">📕</span>
+            <span data-i18n="dnd.drop"
+              >Clique para escolher o PDF ou arraste-o até aqui</span
+            >
+          </label>
+
+          <p class="privacy" data-i18n="dnd.privacy">
+            🔒 O arquivo é lido só no seu navegador: nada é enviado para a
+            internet.
+          </p>
+
+          <!-- role="status": leitores de tela anunciam cada mudança deste texto. -->
+          <p class="statusbar" role="status" data-book-status>
+            <span data-i18n="dnd.noBook">📭 Nenhum livro carregado</span>
+          </p>
+          <!-- <progress> nativo: o win98.css não precisa de nada para mostrá-lo. -->
+          <progress class="progress" hidden data-book-progress></progress>
+
+          <!--
+            Livros já lidos ficam guardados no IndexedDB deste navegador
+            (store.js): na próxima visita a página abre sem pedir o PDF.
+            Um item por livro, cada um com o seu botão de esquecer.
+          -->
+          <section class="books" hidden data-books>
+            <h2 class="books-title" data-i18n="dnd.books">
+              📚 Livros guardados neste navegador
+            </h2>
+            <ul class="field books-list" data-books-list></ul>
+          </section>
+
+          <!-- Mapa do livro: capítulos e seções que o extrator reconheceu. -->
+          <details class="book-map" hidden data-book-map>
+            <summary data-i18n="dnd.map">🗺 Mapa do livro</summary>
+            <ul class="field tree" data-book-tree></ul>
+          </details>
+        </div>
+      </section>
+
+      <section class="window win-wizard" aria-labelledby="wizard-title">
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="wizard-title">
+            🧙 <span data-i18n="dnd.wizard">Criador de personagem</span>
+          </h2>
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn btn-minimize"
+              data-action="minimize"
+              aria-label="Minimizar"
+              data-i18n-attr="aria-label:common.minimize"
+            ></button>
+          </div>
+        </div>
+
+        <div class="window-body">
+          <!--
+            <fieldset disabled> desabilita de uma vez todos os controles de
+            dentro dele: enquanto não houver livro, nada pode ser escolhido.
+          -->
+          <fieldset class="wizard" disabled data-wizard>
+            <legend data-i18n="dnd.steps">Etapas</legend>
+            <!-- aria-pressed marca a etapa atual; .has-pending, as que faltam. -->
+            <ol class="steps">
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="class"
+                  data-i18n="dnd.step.class"
+                >
+                  Classe
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="origin"
+                  data-i18n="dnd.step.origin"
+                >
+                  Origem
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="abilities"
+                  data-i18n="dnd.step.abilities"
+                >
+                  Atributos
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="level"
+                  data-i18n="dnd.step.level"
+                >
+                  Nível
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="spells"
+                  data-i18n="dnd.step.spells"
+                >
+                  Magias
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="equipment"
+                  data-i18n="dnd.step.equipment"
+                >
+                  Equipamento
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="details"
+                  data-i18n="dnd.step.details"
+                >
+                  Detalhes
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="btn"
+                  data-step="sheet"
+                  data-i18n="dnd.step.sheet"
+                >
+                  Ficha
+                </button>
+              </li>
+            </ol>
+            <p class="field empty" data-i18n="dnd.waiting" data-waiting>
+              ⏳ Carregue o livro para começar.
+            </p>
+            <!--
+              Duas colunas: a etapa atual e o resumo do personagem, que
+              fica sempre à vista e lista o que falta escolher.
+            -->
+            <div class="w-layout">
+              <div class="field w-panel" hidden data-panel></div>
+              <aside
+                class="w-summary"
+                hidden
+                aria-live="polite"
+                data-summary
+              ></aside>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+
+      <!--
+        Janela de informações: o texto do livro (magia, talento, traço)
+        abre aqui, por cima, em vez de esticar o criador. É uma .window
+        comum: o desktop.js arrasta, traz para a frente e fecha com o ✕
+        (data-action="close"). position: fixed tira ela do fluxo.
+      -->
+      <section
+        class="window win-info"
+        hidden
+        role="dialog"
+        aria-labelledby="info-title"
+        data-info
+      >
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="info-title">
+            ⓘ <span data-info-title></span>
+          </h2>
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn btn-close"
+              data-action="close"
+              data-info-close
+              aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
+            ></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="field info-body" data-info-body></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="taskbar">
+      <a class="btn start-button" href="../../" data-i18n="dnd.home"
+        >🌴 Início</a
+      >
+      <!-- Um botão por janela minimizável, criado pelo assets/desktop.js. -->
+      <div class="tasks"></div>
+      <span class="taskbar-hint" data-i18n="dnd.saved"
+        >Dados salvos só neste navegador</span
+      >
+      <div class="tray">
+        <!-- Relógio da bandeja, preenchido pelo assets/desktop.js. -->
+        <time class="clock">--:--</time>
+      </div>
+    </footer>
+  </body>
+</html>

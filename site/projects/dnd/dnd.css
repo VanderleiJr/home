@@ -1,0 +1,594 @@
+/*
+  Estilo do d&d.exe. O visual Windows 98 vem do assets/win98.css e o
+  cenário do assets/scene.css; aqui fica só o que é deste criador.
+*/
+
+/* ---------- Janelas: largura de cada uma no fluxo da página ---------- */
+
+.win-book {
+  flex: 0 1 360px;
+}
+
+.win-wizard {
+  flex: 0 1 940px;
+  /* min-width: 0 deixa a janela encolher abaixo do conteúdo (flex). */
+  min-width: 0;
+}
+
+/*
+  Esconde só dos olhos: o input continua no documento, focável pelo
+  teclado e lido pelos leitores de tela. display:none tiraria tudo isso.
+*/
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Área de soltar o PDF ---------- */
+
+.dropzone {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  /* Borda tracejada: o convite clássico para "solte aqui". */
+  outline: 2px dashed #808080;
+  outline-offset: -8px;
+}
+
+.dropzone-icon {
+  font-size: 2.5rem;
+}
+
+/* .is-dragging é ligada pelo JS enquanto há um arquivo por cima. */
+.dropzone.is-dragging {
+  outline-color: #000080;
+  background: #dfe8ff;
+}
+
+/* O input escondido ainda recebe foco: o anel aparece na label inteira. */
+.dropzone:focus-within {
+  outline-style: solid;
+  outline-color: #000080;
+}
+
+.privacy {
+  font-size: 0.85rem;
+}
+
+/* ---------- Assistente ---------- */
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+/* Botões de um <fieldset disabled> herdam o estado: ficam acinzentados. */
+.wizard:disabled .btn {
+  color: #808080;
+  text-shadow: 1px 1px #fff;
+}
+
+.empty {
+  padding: 24px 12px;
+  text-align: center;
+}
+
+/* ---------- Progresso e mapa do livro ---------- */
+
+.progress {
+  width: 100%;
+}
+
+.book-map summary {
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.tree {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 4px 4px 4px 20px;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
+.tree ul {
+  padding-left: 16px;
+}
+
+/* Número da página alinhado à direita, como num sumário impresso. */
+.tree .page {
+  float: right;
+  color: #808080;
+}
+
+/* ---------- Livros guardados no navegador ---------- */
+
+.books-title {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+
+.books-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+
+/* Nome à esquerda, botão à direita; quebra de linha em telas estreitas. */
+.book {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---------- Assistente: etapa + resumo ---------- */
+
+/* Etapa atual em destaque; as com pendência ganham um ponto vermelho. */
+.steps .btn[aria-pressed="true"] {
+  font-weight: bold;
+}
+
+.steps .btn.has-pending::after {
+  content: " •";
+  color: #c00000;
+}
+
+/*
+  Grade de duas colunas que vira uma só em telas estreitas: com
+  auto-fit + minmax, o navegador decide quantas colunas cabem, sem
+  media query. O resumo nunca fica mais estreito que 220px.
+*/
+.w-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  gap: 8px;
+  align-items: start;
+}
+
+/* A etapa rola por dentro: a janela não cresce sem fim com 200 magias. */
+.w-panel {
+  /* Altura fixa (não máxima): a janela não muda de tamanho entre etapas. */
+  height: min(70vh, 640px);
+  padding: 8px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Resumo "grudado" no topo enquanto a página rola (sticky). */
+.w-summary {
+  position: sticky;
+  top: 8px;
+}
+
+.w-panel h3 {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+}
+
+.w-panel .w-step-title {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+/* Cartões de classe/subclasse: o rádio fica dentro do cartão inteiro. */
+.w-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px;
+}
+
+.w-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 4px;
+  padding: 4px;
+  border: 1px solid #808080;
+  background: #fff;
+  cursor: pointer;
+}
+
+.w-card small {
+  grid-column: 2;
+  color: #404040;
+}
+
+/* :has() pinta o cartão marcado sem JS (o .is-on é o plano B). */
+.w-card:has(input:checked),
+.w-card.is-on {
+  background: #dfe8ff;
+  outline: 1px solid #000080;
+}
+
+.w-tagline {
+  font-style: italic;
+}
+
+.w-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 8px;
+  margin: 6px 0;
+}
+
+.w-facts dt {
+  font-weight: bold;
+}
+
+.w-facts dd {
+  margin: 0;
+}
+
+.w-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 8px 4px 0;
+}
+
+.w-field select {
+  max-width: 100%;
+}
+
+.w-checks,
+.w-radios {
+  margin: 8px 0;
+}
+
+/* Listas longas (magias) em colunas que se ajustam à largura. */
+.w-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2px 8px;
+}
+
+.w-check {
+  display: block;
+}
+
+.w-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  align-items: baseline;
+}
+
+/* "ⓘ": botão com cara de link que abre o texto na janela de informações. */
+.w-info-btn {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: #000080;
+  font: inherit;
+  cursor: pointer;
+}
+
+.w-info-btn:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Janela de informações ---------- */
+
+/*
+  Fixa na tela, fora do fluxo das outras janelas: abrir e fechar não
+  mexe no layout. O translate do win98.css (arrastar) continua valendo
+  por cima desta posição.
+*/
+.win-info {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: min(420px, calc(100vw - 32px));
+}
+
+/* O texto rola dentro da janela; ela nunca passa da altura da tela. */
+.info-body {
+  max-height: min(60vh, 520px);
+  padding: 6px 8px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.info-body p {
+  margin: 0 0 6px;
+}
+
+.w-trait,
+.w-feat {
+  margin: 6px 0;
+  padding: 4px 0;
+  border-top: 1px solid #c0c0c0;
+}
+
+.w-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: end;
+}
+
+.w-hint {
+  color: #404040;
+  font-size: 0.85rem;
+}
+
+.w-warn {
+  color: #c00000;
+  font-weight: bold;
+}
+
+.w-ok {
+  color: #006000;
+}
+
+.w-scores {
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+
+.w-scores th,
+.w-scores td {
+  padding: 2px 6px;
+  border: 1px solid #808080;
+  text-align: center;
+}
+
+.w-features {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.w-small {
+  min-width: 0;
+  margin-left: 6px;
+  padding: 0 6px;
+}
+
+.w-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 0;
+}
+
+/* ---------- Resumo do personagem ---------- */
+
+.w-summary h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.w-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+/* Cada número numa "caixinha" afundada, como os campos do Win98. */
+.w-stat {
+  display: grid;
+  padding: 2px 4px;
+  background: #fff;
+  box-shadow:
+    inset 1px 1px #808080,
+    inset -1px -1px #fff;
+  text-align: center;
+}
+
+.w-stat small {
+  font-size: 0.7rem;
+}
+
+.w-pending summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.w-pending ul {
+  margin: 4px 0;
+  padding-left: 16px;
+  font-size: 0.85rem;
+}
+
+/* Botão com cara de link: leva direto à etapa da pendência. */
+.w-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #000080;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Detalhes e ficha ---------- */
+
+/* Campos de texto ocupam a linha toda; o textarea só cresce na altura. */
+.w-text {
+  display: grid;
+  gap: 2px;
+}
+
+.w-text textarea {
+  resize: vertical;
+}
+
+.w-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* A <label class="btn"> do importar abre o seletor de arquivo. */
+.w-toolbar label.btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.w-toolbar label.btn:focus-within {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.sheet {
+  display: grid;
+  gap: 8px;
+}
+
+.sheet-head h3 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.sheet-head p {
+  margin: 2px 0 0;
+}
+
+/* Seis atributos lado a lado; auto-fit quebra em telas estreitas. */
+.sheet-abilities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 4px;
+}
+
+.sheet-abilities strong {
+  font-size: 1.4rem;
+}
+
+.sheet-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+/* Cada bloco da ficha é uma "moldura" afundada, como um grupo do Win98. */
+.sheet-box {
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border: 1px solid #808080;
+  box-shadow: 1px 1px #fff;
+}
+
+.sheet-box h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.sheet-box ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.sheet-box p {
+  margin: 2px 0;
+}
+
+/* Perícias: a bolinha já marca a proficiência, sem marcadores da lista. */
+.sheet-box .sheet-skills {
+  padding: 0;
+  list-style: none;
+  columns: 2 140px;
+}
+
+/* pre-line: as quebras de linha digitadas nos detalhes continuam lá. */
+.sheet-text {
+  white-space: pre-line;
+}
+
+/*
+  Impressão: só a ficha. O resto da página (cenário, janelas, barra de
+  tarefas, etapas e resumo) some, e a etapa perde a altura fixa e a
+  rolagem, para a ficha seguir por quantas folhas precisar. Cores do
+  Win98 viram preto no branco, que é o que a impressora faz bem.
+*/
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .scene,
+  .taskbar,
+  .win-book,
+  .win-info,
+  .win-wizard > .titlebar,
+  .steps,
+  .wizard > legend,
+  .w-summary,
+  .w-step-title,
+  .w-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .desktop,
+  .window,
+  .window-body,
+  .wizard,
+  .w-layout,
+  .w-panel {
+    display: block;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .w-stat {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+
+  /* Um bloco não é cortado ao meio entre duas folhas. */
+  .sheet-box,
+  .w-stat {
+    break-inside: avoid;
+  }
+}
+
+/*
+  Telas estreitas: no fim do arquivo de propósito. Com a mesma
+  especificidade, vence a regra que vem depois; aqui ela sobrescreve
+  as de cima (o sticky do resumo, as duas colunas).
+*/
+@media (width < 720px) {
+  .w-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+    No celular o resumo sobe para cima da etapa (order) e deixa de ser
+    sticky: numa coluna só, ele cobriria a etapa ao rolar.
+  */
+  .w-summary {
+    position: static;
+    order: -1;
+  }
+
+  /* No celular a janela de informações ocupa a largura, perto do topo. */
+  .win-info {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}

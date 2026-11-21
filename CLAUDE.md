@@ -16,6 +16,7 @@ Personal home page linking small open-source learning projects built together. E
 - The home car is a 3D model in `home.js` projected with the floor's CSS geometry (`--floor-tilt`, `.floor` perspective): change the floor only through those, or the car drifts off the road.
   Its headlight beams and tail-light glow fade in with `--daylight`.
 - `tools/vlibras/` (outside `site/`, Node only, never shipped): `npm run vlibras` downloads the VLibras dictionary bundles, reads the Unity AnimationClips and regenerates the `SIGN_TABLE` block of `site/projects/libras/signs.js`. Edit the generator, not the generated rows; keep the VLibras credit on the libras page.
+- `site/projects/dnd/` (d&d.exe): no book content ever goes into the repo — the page reads the user's own PDF in the browser. `pdf.js` = own PDF text reader (browser + Node), `extract.js` = generic helpers (reading order, outline by font style, paragraphs, tables), `sources/<id>.js` = one per book (SHA-256 + book-specific rules + extractor `version`, registered with `DND.registerSource`), `store.js` = IndexedDB cache of extracted data per source (bump the source `version` when extraction changes), `DND.merge` joins several books, `rules.js` = pure D&D math over that data (no book numbers; tested in `dnd:check`). `wizard.js` = the character wizard (state → `derive()` → redraw; characters in localStorage `dnd-exe:characters`, exported/imported as JSON with ids only — never book text): book data only feeds choices, limits and numbers, never shown as raw tables; rule text only on demand (ⓘ button → `.win-info` window). The local PDF lives in gitignored `tools/dnd/livros/`; `npm run dnd:check` validates extraction, `tools/dnd/inspect.js --texto N` dumps pages.
 - `.github/workflows/pages.yml` lints, then deploys `site/` to GitHub Pages on push to `main`.
 - Served under `/home/` (repo isn't `<user>.github.io`): use relative URLs; root-absolute paths like `/css/style.css` break.
 - Run `npm run lint` after editing HTML. Prettier runs automatically via a PostToolUse hook.
@@ -32,6 +33,7 @@ Personal home page linking small open-source learning projects built together. E
 - Strings live in `site/i18n/<lang>.json` (namespaced `common.*`, `home.*`, `<project>.*`); `languages.json` lists the languages. Adding a language = new JSON + list entry, no code.
 - The HTML keeps the Portuguese text as fallback, and it must match `pt-BR.json`. Every language JSON has the same keys.
 - Language: `?lang=` > saved choice > browser languages > `pt-BR`. The `<select data-lang-select>` switcher is built from `languages.json`.
+- A page can lock its language with `data-lang` on the `i18n.js` script (no switcher; ignores `?lang=`). d&d.exe is locked to `pt-BR` (the book is Portuguese): its `dnd.*` keys live only in `pt-BR.json`.
 
 ## Compact instructions
 
@@ -40,4 +42,5 @@ When compacting, keep structure decisions, files changed and pending items; drop
 ## Git
 
 - Commits em português, com gitmoji (https://gitmoji.dev/) em unicode: `🎉 Estrutura inicial do site`. Assunto curto (~50 caracteres); detalhes no corpo.
+- Cada página nova é feita numa branch `feature/<slug>` (ex.: `feature/dnd`); só entra na `main` (que publica) quando estiver pronta.
 - Última linha: `Co-Authored-By: 🤖 Claude <modelo> <noreply@anthropic.com>`.

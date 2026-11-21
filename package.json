@@ -6,7 +6,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "html-validate site",
-    "vlibras": "node tools/vlibras/build.js"
+    "vlibras": "node tools/vlibras/build.js",
+    "dnd:check": "node tools/dnd/check.js"
   },
   "devDependencies": {
     "html-validate": "^11.21.1",
