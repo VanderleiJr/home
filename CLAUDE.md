@@ -39,6 +39,11 @@ Personal home page linking small open-source learning projects built together. E
 
 When compacting, keep structure decisions, files changed and pending items; drop command output.
 
+## Versions
+
+- SemVer adapted to a site: patch = fixes; minor = new project or big feature; major = breaking (URLs, saved browser data). 0.x = in development, not publicized; 1.0.0 = when the user publicizes the site.
+- Releasing: squash-merge the feature branch into `main`, then a `🔖 Versão X.Y.Z` commit updating `CHANGELOG.md` (Portuguese, user-facing changes only) and `package.json` `version`; annotated tag `vX.Y.Z`; push with tags; `gh release create` (pre-release while 0.x). Only with the user's ok.
+
 ## Git
 
 - Commits em português, com gitmoji (https://gitmoji.dev/) em unicode: `🎉 Estrutura inicial do site`. Assunto curto (~50 caracteres); detalhes no corpo.

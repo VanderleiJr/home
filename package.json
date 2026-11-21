@@ -1,5 +1,6 @@
 {
   "name": "home",
+  "version": "0.2.0",
   "private": true,
   "description": "Dev tooling only - the site itself has no build step.",
   "scripts": {
