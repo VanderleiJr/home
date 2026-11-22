@@ -67,7 +67,14 @@
     "timedHint": "60 s · a miss costs 3 s",
     "endless": "∞ Endless",
     "endlessHint": "no clock, at your pace",
-    "records": "🏆 Records for these settings: <b data-best=\"timed\">0</b> points · streak of <b data-best=\"streak\">0</b> · ✍ drawing at this difficulty: streak of <b data-best=\"draw\">0</b>",
+    "recordsTitle": "🏆 Records for these settings",
+    "recordTimed": "⏱ Time attack · points",
+    "recordStreak": "∞ Best streak",
+    "recordDraw": "✍ Drawing",
+    "difficultyName": {
+      "easy": "Easy",
+      "hard": "Hard"
+    },
     "game": "Game",
     "score": "Score",
     "how": "How does it read?",
@@ -83,7 +90,7 @@
     "journeyHelp": "Each level needs <b>70%</b> correct answers (★) to unlock the next one. ★★ = 90% · ★★★ = no mistakes. This progress is saved and never lost.",
     "hiraganaTitle": "あ hiragana.txt",
     "katakanaTitle": "ア katakana.txt",
-    "tableHelp": "In the traditional order: each row is a consonant and each column a vowel.",
+    "tableHelp": "In the traditional order: each row is a consonant and each column a vowel. Click a kana to see its stroke order.",
     "tableHidden": "🙈 Hidden during the game, so there is no cheating.",
     "home": "🌴 Home",
     "saved": "Progress saved in this browser",
@@ -134,6 +141,9 @@
       "shape": "{n}: shape",
       "extra": "{n}: extra"
     },
+    "groupUnlocked": "Unlocked in the journey",
+    "noneUnlocked": "No kana unlocked in the journey for this alphabet.",
+    "strokeCount": "{n} stroke(s)",
     "credits": "Stroke order from <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, by Ulrich Apel (CC BY-SA 3.0 license).",
     "scripts": {
       "hiragana": "Hiragana",

@@ -205,8 +205,10 @@ const drawBox = $(".draw");
 
 /*
   Durante a partida as tabelas de kana ficam borradas (sem "cola"): uma
-  classe no <html> liga o blur no CSS, e "inert" tira as janelas do
-  teclado e dos leitores de tela enquanto isso.
+  classe no <html> liga o blur no CSS, e "inert" tira o conteúdo das
+  janelas do teclado, do mouse e dos leitores de tela enquanto isso.
+  Só o corpo (.window-body): a barra de título segue ativa, então as
+  janelas ainda podem ser arrastadas e minimizadas.
 */
 const kanaWindows = document.querySelectorAll(".win-kana");
 
@@ -214,7 +216,11 @@ function show(screen) {
   for (const s of [menu, game, end]) s.hidden = s !== screen;
   const playing = screen === game;
   document.documentElement.classList.toggle("is-playing", playing);
-  for (const win of kanaWindows) win.inert = playing;
+  for (const win of kanaWindows) {
+    win.querySelector(".window-body").inert = playing;
+  }
+  // Durante a partida a janela dos traços seria cola: fecha.
+  if (playing) closeStrokes();
 }
 
 // ---------- Configurações do menu ----------
@@ -250,18 +256,60 @@ const recordKey = (s, mode) =>
   }`;
 
 function showRecords() {
-  const best = store.best[recordKey(readSettings())] ?? {};
-  $("[data-best='timed']").textContent = best.timed ?? 0;
-  $("[data-best='streak']").textContent = best.streak ?? 0;
-  const drawn = store.best[recordKey(readSettings(), "draw")] ?? {};
-  $("[data-best='draw']").textContent = drawn.streak ?? 0;
+  const settings = readSettings();
+  const best = store.best[recordKey(settings)] ?? {};
+  const drawn = store.best[recordKey(settings, "draw")] ?? {};
+  setRecord("timed", best.timed);
+  setRecord("streak", best.streak);
+  setRecord("draw", drawn.streak);
+  $(".record-difficulty").textContent =
+    `(${t(`difficultyName.${settings.difficulty}`)})`;
 }
 
-menu.addEventListener("change", () => {
-  // Validação nativa: setCustomValidity marca o campo como inválido.
-  groupBoxes[0].setCustomValidity(
-    menu.querySelector('[name="groups"]:checked') ? "" : t("needGroup"),
-  );
+// Sem recorde ainda: um "—" apagado (classe is-empty) em vez de um 0.
+function setRecord(name, value) {
+  const cell = $(`[data-best='${name}']`);
+  cell.textContent = value || "—";
+  cell.classList.toggle("is-empty", !value);
+}
+
+/*
+  Os kana do modo livre. "Liberados na jornada" troca os grupos pelos
+  kana dos níveis já abertos no mapa (um Set tira as repetições: os
+  níveis de revisão repetem os kana do grupo).
+*/
+function freePool(settings) {
+  const inScript = (c) =>
+    settings.script === "both" || c.script === settings.script;
+  if (settings.groups.includes("unlocked")) {
+    const open = LEVELS.filter((_, i) => isUnlocked(i)).flatMap((l) => l.cards);
+    return [...new Set(open)].filter(inScript);
+  }
+  return CARDS.filter((c) => inScript(c) && settings.groups.includes(c.group));
+}
+
+// Validação nativa: setCustomValidity marca o campo como inválido.
+function validateGroups() {
+  let message = "";
+  if (!menu.querySelector('[name="groups"]:checked')) message = t("needGroup");
+  else if (!freePool(readSettings()).length) message = t("noneUnlocked");
+  groupBoxes[0].setCustomValidity(message);
+}
+
+menu.addEventListener("change", (event) => {
+  /*
+    "Liberados na jornada" não se soma aos grupos, ele os substitui:
+    marcar um desmarca o outro lado, como um rádio "de mentira".
+  */
+  const box = event.target;
+  if (box.name === "groups" && box.checked) {
+    for (const other of groupBoxes) {
+      if ((other.value === "unlocked") !== (box.value === "unlocked")) {
+        other.checked = false;
+      }
+    }
+  }
+  validateGroups();
   showRecords();
 });
 
@@ -294,11 +342,7 @@ function start(mode, levelIndex = null) {
     pool = level.cards;
     queue = buildQueue(level.cards, level.questions);
   } else {
-    pool = CARDS.filter(
-      (c) =>
-        (settings.script === "both" || c.script === settings.script) &&
-        settings.groups.includes(c.group),
-    );
+    pool = freePool(settings);
   }
 
   session = {
@@ -633,7 +677,10 @@ typing.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (game.hidden) return;
+  if (game.hidden) {
+    if (event.key === "Escape") closeStrokes();
+    return;
+  }
   if (event.key === "Escape") quit();
   // Ctrl+Z (ou ⌘+Z no Mac) desfaz o último traço, como num editor.
   const hard = !drawBox.hidden && session.settings.difficulty === "hard";
@@ -1120,6 +1167,48 @@ function clearStrokes() {
   redraw();
 }
 
+// ---------- Janela auxiliar: ordem dos traços de um kana ----------
+
+/*
+  Clicar num kana das tabelas abre a ordem dos traços numa janela
+  própria (a .win-strokes do HTML), como o ⓘ do d&d.exe: a tabela não
+  muda de tamanho e a janela pode ser arrastada para o lado.
+*/
+const strokesWin = $(".win-strokes");
+let strokesOpener = null;
+
+function openStrokes(glyph, romaji, opener) {
+  const svg = strokeSvg(glyph);
+  strokesWin.querySelector(".strokes-title").textContent =
+    `${glyph} · ${romaji}`;
+  strokesWin.querySelector(".strokes-view").replaceChildren(svg);
+  const count = [...glyph].reduce((n, char) => n + STROKES[char].length, 0);
+  strokesWin.querySelector(".strokes-count").textContent = t("strokeCount", {
+    n: count,
+  });
+  strokesOpener = opener;
+  desktop.open(strokesWin);
+  animateStrokes(svg);
+  // Foco no ✕: quem usa teclado já está "dentro" da janela.
+  strokesWin.querySelector("[data-action='close']").focus();
+}
+
+// Ao fechar (✕ ou Esc), o foco volta ao kana que abriu a janela.
+function closeStrokes() {
+  if (strokesWin.hidden) return;
+  desktop.close(strokesWin);
+  strokesOpener?.isConnected && strokesOpener.focus();
+}
+
+strokesWin
+  .querySelector("[data-action='close']")
+  .addEventListener("click", () => strokesOpener?.focus());
+strokesWin
+  .querySelector(".strokes-replay")
+  .addEventListener("click", () =>
+    animateStrokes(strokesWin.querySelector("svg")),
+  );
+
 // ---------- Janelas dos alfabetos: tabelas de consulta ----------
 
 /*
@@ -1140,14 +1229,19 @@ function renderTable(win) {
     for (const [kanaRow, romajiRow] of rows) {
       const romaji = romajiRow.split(" ");
       kanaRow.split(" ").forEach((kana, i) => {
-        const cell = document.createElement("p");
+        // Casa com kana é um botão (abre a ordem dos traços); vazia, um <p>.
+        const cell = document.createElement(kana === "-" ? "p" : "button");
         cell.className = "kana-cell";
         if (kana === "-") {
           cell.classList.add("is-empty");
           cell.ariaHidden = "true";
         } else {
           const glyph = script === "katakana" ? toKatakana(kana) : kana;
+          cell.type = "button";
           cell.innerHTML = `<span lang="ja">${glyph}</span> <small>${romaji[i]}</small>`;
+          cell.addEventListener("click", () =>
+            openStrokes(glyph, romaji[i], cell),
+          );
         }
         grid.append(cell);
       });
@@ -1162,5 +1256,6 @@ function renderTable(win) {
 i18n.ready.then(() => {
   renderJourney();
   showRecords();
+  validateGroups();
   kanaWindows.forEach(renderTable);
 });

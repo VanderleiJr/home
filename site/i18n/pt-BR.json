@@ -67,7 +67,14 @@
     "timedHint": "60 s · errar custa 3 s",
     "endless": "∞ Infinito",
     "endlessHint": "sem relógio, no seu ritmo",
-    "records": "🏆 Recordes nesta configuração: <b data-best=\"timed\">0</b> pontos · sequência de <b data-best=\"streak\">0</b> · ✍ desenho nesta dificuldade: sequência de <b data-best=\"draw\">0</b>",
+    "recordsTitle": "🏆 Recordes nesta configuração",
+    "recordTimed": "⏱ Contra o tempo · pontos",
+    "recordStreak": "∞ Maior sequência",
+    "recordDraw": "✍ Desenho",
+    "difficultyName": {
+      "easy": "Fácil",
+      "hard": "Difícil"
+    },
     "game": "Jogo",
     "score": "Pontos",
     "how": "Como se lê?",
@@ -83,7 +90,7 @@
     "journeyHelp": "Cada nível pede <b>70%</b> de acertos (★) para liberar o próximo. ★★ = 90% · ★★★ = sem erros. Este progresso fica salvo e não se perde.",
     "hiraganaTitle": "あ hiragana.txt",
     "katakanaTitle": "ア katakana.txt",
-    "tableHelp": "Na ordem tradicional: cada linha é uma consoante e cada coluna uma vogal.",
+    "tableHelp": "Na ordem tradicional: cada linha é uma consoante e cada coluna uma vogal. Clique num kana para ver a ordem dos traços.",
     "tableHidden": "🙈 Escondido durante a partida, para não dar cola.",
     "home": "🌴 Início",
     "saved": "Progresso salvo neste navegador",
@@ -134,6 +141,9 @@
       "shape": "{n}: forma",
       "extra": "{n}: sobrando"
     },
+    "groupUnlocked": "Liberados na jornada",
+    "noneUnlocked": "Nenhum kana liberado na jornada neste alfabeto.",
+    "strokeCount": "{n} traço(s)",
     "credits": "Ordem dos traços do <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, de Ulrich Apel (licença CC BY-SA 3.0).",
     "scripts": {
       "hiragana": "Hiragana",

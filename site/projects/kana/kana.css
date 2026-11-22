@@ -364,6 +364,63 @@
   margin: 0;
 }
 
+/* ---------- Recordes ---------- */
+
+/* Caixa "afundada" (.field) com a barra roxa de título das tabelas de kana. */
+.records {
+  padding: 0;
+}
+
+.records h3 {
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: #fff;
+  background: var(--purple);
+}
+
+.records table {
+  width: 100%;
+  /* collapse: as bordas das células viram uma linha só, sem vãos. */
+  border-collapse: collapse;
+}
+
+.records th,
+.records td {
+  padding: 4px 8px;
+}
+
+.records th {
+  font-weight: normal;
+  text-align: left;
+}
+
+/* Números alinhados à direita e com algarismos de mesma largura. */
+.records td {
+  font-size: 15px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Linhas alternadas (zebra) ajudam o olho a seguir do nome ao número. */
+.records tr:nth-child(even) {
+  background: #f5eeff;
+}
+
+.records tr + tr {
+  border-top: 1px dotted #cdb8ea;
+}
+
+.records td.is-empty {
+  font-weight: normal;
+  color: #999;
+}
+
+.record-difficulty {
+  color: #555;
+}
+
 .game-level {
   font-weight: bold;
   text-align: center;
@@ -506,6 +563,24 @@
   box-shadow: var(--bevel-in);
 }
 
+/* As casas são botões: tiram o visual padrão de botão do navegador. */
+button.kana-cell {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+button.kana-cell:hover {
+  background: #f1e6ff;
+}
+
+button.kana-cell:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -3px;
+}
+
 .kana-cell span {
   font-size: 22px;
   line-height: 1.2;
@@ -589,4 +664,30 @@
   to {
     stroke-dashoffset: 0;
   }
+}
+
+/* ---------- Janela auxiliar da ordem dos traços ---------- */
+
+/*
+  Fixa na tela, fora do fluxo das outras janelas: abrir e fechar não
+  mexe no layout. O translate do win98.css (arrastar) continua valendo
+  por cima desta posição.
+*/
+.win-strokes {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: min(300px, calc(100vw - 32px));
+}
+
+.strokes-view {
+  padding: 0;
+}
+
+.strokes-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
 }
