@@ -104,19 +104,41 @@ const smallRate = smallOk / Object.keys(STROKES).length;
 console.log(`letra pequena/deslocada: ${Math.round(smallRate * 100)}%`);
 if (smallRate < 0.9) fail("letra pequena/deslocada: taxa abaixo de 90%");
 
-// Combinados: ゃ na célula da direita.
-const kya = Draw.expectedStrokes("きゃ", STROKES);
-const small = raw("ゃ").map((s) => s.map(([x, y]) => [x + Draw.BOX, y]));
-const wobble = hand();
-const kyaDrawn = [...raw("き"), ...small].map((s) => wobble(s));
-if (!Draw.checkAll(kyaDrawn, kya).ok) fail("きゃ: checkAll falhou");
-if (
-  Draw.checkAll(
-    raw("き").map((s) => wobble(s)),
-    kya,
-  ).ok
-)
-  fail("きゃ: aceitou só き");
+/*
+  Combinados (yōon): todos os きゃ…ぴょ e キャ…ピョ, com o kana pequeno
+  na célula da direita. Aqui a mão desloca e muda o tamanho da palavra
+  inteira (centro em x = 109, entre as duas células). Também confere
+  que só o 1º kana não basta.
+*/
+const heads = "きしちにひみりぎじびぴ";
+const toKatakana = (c) => String.fromCharCode(c.charCodeAt(0) + 0x60);
+const cell2 = (char) =>
+  raw(char).map((s) => s.map(([x, y]) => [x + Draw.BOX, y]));
+let comboOk = 0;
+let comboTotal = 0;
+for (const katakana of [false, true]) {
+  for (const head of heads) {
+    for (const tail of "ゃゅょ") {
+      const [a, b] = katakana
+        ? [toKatakana(head), toKatakana(tail)]
+        : [head, tail];
+      const expected = Draw.expectedStrokes(a + b, STROKES);
+      const wobble = hand();
+      const word = (strokes) =>
+        wobble(strokes.map(([x, y]) => [54.5 + (x - Draw.BOX), y])).map(
+          ([x, y]) => [x + Draw.BOX - 54.5, y],
+        );
+      comboTotal++;
+      if (Draw.checkAll([...raw(a), ...cell2(b)].map(word), expected).ok)
+        comboOk++;
+      else console.log(`  · ${a + b} recusado`);
+      if (Draw.checkAll(raw(a).map(word), expected).ok)
+        fail(`${a + b}: aceitou só ${a}`);
+    }
+  }
+}
+console.log(`combinados: ${comboOk}/${comboTotal}`);
+if (comboOk / comboTotal < 0.95) fail("combinados: taxa abaixo de 95%");
 
 for (const kind of ["direction", "order"]) {
   const [hit, total] = tally[kind];

@@ -162,21 +162,21 @@
     2. mesma forma (shapeGap < SHAPE_LIMIT), num tamanho parecido e
        sem fugir muito do lugar — cobre quem escreve o kana inteiro
        menor ou maior que a referência.
-    Traços curtos (pontinhos, o ゛) só valem pela regra 1: neles a
+    Traços curtos (pontinhos, o ゛) só valem pela regra 1 — com limite
+    DRIFT em vez de LIMIT quando "loose" (1º traço, veja checkStroke): neles a
     "forma" é quase só tremor da mão.
     Como os pontos são comparados na ordem, o sentido conta: um traço
     feito de trás para frente fica longe do esperado, mas perto dele
     invertido — é assim que se reconhece o erro de direção.
   */
-  function matchStroke(user, expected) {
+  function matchStroke(user, expected, loose = false) {
     const fits = (target) => {
       const dist = meanGap(user, target);
-      if (dist < LIMIT) return { ok: true, dist };
       const userLength = length(user);
       const expectedLength = length(target);
-      if (expectedLength < SHORT || userLength < SHORT / 2) {
-        return { ok: false, dist };
-      }
+      const short = expectedLength < SHORT;
+      if (dist < (loose && short ? DRIFT : LIMIT)) return { ok: true, dist };
+      if (short || userLength < SHORT / 2) return { ok: false, dist };
       const ratio = userLength / expectedLength;
       const ok =
         ratio > 0.5 &&
@@ -242,6 +242,13 @@
   */
   function checkStroke(points, expected, index, accepted = []) {
     const user = resample(points).map(fitHand(accepted, expected));
+    /*
+      O 1º traço ainda não tem calibração da mão: se a letra inteira
+      estiver deslocada, ele chega mais longe do esperado. Traços curtos
+      (os pontinhos de シ) só valem pela distância, então ganham a mesma
+      folga da regra da forma (DRIFT) enquanto nada foi aceito.
+    */
+    const loose = !accepted.length;
     const done = accepted.map((a) => a.index);
     /*
       Entre os traços que ainda faltam e que "batem", vale o mais perto.
@@ -251,12 +258,12 @@
     let best = null;
     expected.forEach((stroke, j) => {
       if (j !== index && done.includes(j)) return;
-      const match = matchStroke(user, stroke);
+      const match = matchStroke(user, stroke, loose);
       if (match.ok && (!best || match.dist < best.dist)) {
         best = { ...match, j };
       }
     });
-    const match = matchStroke(user, expected[index]);
+    const match = matchStroke(user, expected[index], loose);
     /*
       Empate técnico (os dois risquinhos do ゛ quase se encostam): se o
       traço esperado também bate, só é erro de ordem quando o outro está

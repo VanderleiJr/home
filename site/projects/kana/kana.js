@@ -768,6 +768,8 @@ function strokeSvg(text) {
     role: "img",
     "aria-label": text,
   });
+  // Dois kana = SVG reduzido à metade: o CSS compensa nos números.
+  svg.style.setProperty("--cells", chars.length);
   let order = 0;
   chars.forEach((char, cell) => {
     const ghost = svgEl("g", { class: "strokes-ghost" });
