@@ -798,6 +798,8 @@ const ink = {
   cells: 1, // 1 kana, ou 2 nos combinados (き + ゃ)
   strokes: [], // traços prontos: [[x, y, espessura], …]
   current: null, // traço sendo feito: { id do ponteiro, pontos }
+  expected: [], // traços da referência, já em pontos (draw.js)
+  accepted: [], // traços aceitos: { points, index }
   penSeen: false, // já apareceu uma caneta? (rejeição da palma)
 };
 
@@ -805,6 +807,8 @@ function setupDrawing(cardData) {
   ink.cells = [...cardData.kana].length;
   ink.strokes = [];
   ink.current = null;
+  ink.expected = Draw.expectedStrokes(cardData.kana, STROKES);
+  ink.accepted = [];
   // --cells muda a proporção do quadro (aspect-ratio) no CSS.
   drawBox.style.setProperty("--cells", ink.cells);
   $(".draw-romaji").textContent = cardData.romaji;
@@ -951,8 +955,39 @@ canvas.addEventListener("pointermove", (event) => {
 
 canvas.addEventListener("pointerup", (event) => {
   if (ink.current?.id !== event.pointerId) return;
+  const { points } = ink.current;
   ink.current = null;
+  debugStroke(points);
 });
+
+/*
+  TEMPORÁRIO (etapa 3): mostra o veredito de cada traço e a distância
+  média até o esperado, para calibrar os limites do draw.js com
+  desenhos reais.
+*/
+function debugStroke(points) {
+  const index = ink.strokes.length - 1;
+  if (index >= ink.expected.length) {
+    feedback.textContent = `traço ${index + 1}: sobrando`;
+    return;
+  }
+  const check = Draw.checkStroke(points, ink.expected, index, ink.accepted);
+  if (check.result === "ok") {
+    ink.accepted.push({ points, index });
+  } else {
+    // Traço errado sai do quadro: o próximo continua no mesmo número.
+    ink.strokes.pop();
+    setTimeout(redraw, 400);
+  }
+  const other =
+    check.other === undefined ? "" : ` (parece o ${check.other + 1})`;
+  let text = `traço ${index + 1}: ${check.result}${other} · ${check.dist.toFixed(1)}`;
+  if (ink.strokes.length === ink.expected.length) {
+    const all = Draw.checkAll(ink.strokes, ink.expected);
+    text += ` — kana inteiro: ${all.ok ? "certo" : "errado"}`;
+  }
+  feedback.textContent = text;
+}
 
 // O sistema cancelou o traço (um gesto, uma notificação): ele é descartado.
 canvas.addEventListener("pointercancel", (event) => {
@@ -964,13 +999,15 @@ canvas.addEventListener("pointercancel", (event) => {
 
 function undoStroke() {
   if (ink.current) return;
-  ink.strokes.pop();
+  const points = ink.strokes.pop();
+  ink.accepted = ink.accepted.filter((a) => a.points !== points);
   redraw();
 }
 
 function clearStrokes() {
   if (ink.current) return;
   ink.strokes = [];
+  ink.accepted = [];
   redraw();
 }
 
