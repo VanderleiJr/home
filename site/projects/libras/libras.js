@@ -130,8 +130,10 @@ const groupBoxes = menu.querySelectorAll('[name="groups"]');
 
 /*
   Durante a partida o alfabeto.txt fica borrado (sem "cola"): uma classe
-  no <html> liga o blur no CSS, e "inert" tira a janela do teclado e
-  dos leitores de tela enquanto isso.
+  no <html> liga o blur no CSS, e "inert" tira o conteúdo da janela do
+  teclado, do mouse e dos leitores de tela enquanto isso. Só o corpo
+  (.window-body): a barra de título segue ativa, então a janela ainda
+  pode ser arrastada e minimizada.
 */
 const tableWindow = $(".win-table");
 
@@ -139,7 +141,7 @@ function show(screen) {
   for (const s of [menu, game, end]) s.hidden = s !== screen;
   const playing = screen === game;
   document.documentElement.classList.toggle("is-playing", playing);
-  tableWindow.inert = playing;
+  tableWindow.querySelector(".window-body").inert = playing;
 }
 
 // ---------- Configurações do menu ----------

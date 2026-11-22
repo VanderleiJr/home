@@ -7,6 +7,9 @@ CLAUDE.local.md
 # Pacotes baixados do VLibras (tools/vlibras/build.js)
 tools/vlibras/.cache/
 
+# SVGs baixados do KanjiVG (tools/kanjivg/build.js)
+tools/kanjivg/.cache/
+
 # Livros do d&d.exe: conteúdo com direitos autorais, nunca vai para o repo
 tools/dnd/livros/
 *.pdf

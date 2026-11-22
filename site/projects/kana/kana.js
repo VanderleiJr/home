@@ -201,11 +201,14 @@ const choices = $(".choices");
 const typing = $(".typing");
 const typingInput = typing.querySelector("input");
 const groupBoxes = menu.querySelectorAll('[name="groups"]');
+const drawBox = $(".draw");
 
 /*
   Durante a partida as tabelas de kana ficam borradas (sem "cola"): uma
-  classe no <html> liga o blur no CSS, e "inert" tira as janelas do
-  teclado e dos leitores de tela enquanto isso.
+  classe no <html> liga o blur no CSS, e "inert" tira o conteúdo das
+  janelas do teclado, do mouse e dos leitores de tela enquanto isso.
+  Só o corpo (.window-body): a barra de título segue ativa, então as
+  janelas ainda podem ser arrastadas e minimizadas.
 */
 const kanaWindows = document.querySelectorAll(".win-kana");
 
@@ -213,7 +216,11 @@ function show(screen) {
   for (const s of [menu, game, end]) s.hidden = s !== screen;
   const playing = screen === game;
   document.documentElement.classList.toggle("is-playing", playing);
-  for (const win of kanaWindows) win.inert = playing;
+  for (const win of kanaWindows) {
+    win.querySelector(".window-body").inert = playing;
+  }
+  // Durante a partida a janela dos traços seria cola: fecha.
+  if (playing) closeStrokes();
 }
 
 // ---------- Configurações do menu ----------
@@ -224,33 +231,85 @@ function readSettings() {
     script: form.get("script"),
     groups: form.getAll("groups"),
     answer: form.get("answer"),
+    difficulty: form.get("difficulty"),
   };
 }
 
 // Restaura as escolhas da última visita marcando os campos do formulário.
 if (store.settings) {
-  const { script, groups, answer } = store.settings;
+  const { script, groups, answer, difficulty } = store.settings;
   for (const input of menu.querySelectorAll("input")) {
     if (input.name === "groups") input.checked = groups.includes(input.value);
     else if (input.name === "script") input.checked = input.value === script;
     else if (input.name === "answer") input.checked = input.value === answer;
+    else if (input.name === "difficulty" && difficulty) {
+      input.checked = input.value === difficulty;
+    }
   }
 }
 
 // Cada combinação de configurações tem seus próprios recordes.
-const recordKey = (s) => `${s.script}|${[...s.groups].sort()}|${s.answer}`;
+// O desenho não usa o tipo de resposta: guarda por dificuldade.
+const recordKey = (s, mode) =>
+  `${s.script}|${[...s.groups].sort()}|${
+    mode === "draw" ? `draw:${s.difficulty}` : s.answer
+  }`;
 
 function showRecords() {
-  const best = store.best[recordKey(readSettings())] ?? {};
-  $("[data-best='timed']").textContent = best.timed ?? 0;
-  $("[data-best='streak']").textContent = best.streak ?? 0;
+  const settings = readSettings();
+  const best = store.best[recordKey(settings)] ?? {};
+  const drawn = store.best[recordKey(settings, "draw")] ?? {};
+  setRecord("timed", best.timed);
+  setRecord("streak", best.streak);
+  setRecord("draw", drawn.streak);
+  $(".record-difficulty").textContent =
+    `(${t(`difficultyName.${settings.difficulty}`)})`;
 }
 
-menu.addEventListener("change", () => {
-  // Validação nativa: setCustomValidity marca o campo como inválido.
-  groupBoxes[0].setCustomValidity(
-    menu.querySelector('[name="groups"]:checked') ? "" : t("needGroup"),
-  );
+// Sem recorde ainda: um "—" apagado (classe is-empty) em vez de um 0.
+function setRecord(name, value) {
+  const cell = $(`[data-best='${name}']`);
+  cell.textContent = value || "—";
+  cell.classList.toggle("is-empty", !value);
+}
+
+/*
+  Os kana do modo livre. "Liberados na jornada" troca os grupos pelos
+  kana dos níveis já abertos no mapa (um Set tira as repetições: os
+  níveis de revisão repetem os kana do grupo).
+*/
+function freePool(settings) {
+  const inScript = (c) =>
+    settings.script === "both" || c.script === settings.script;
+  if (settings.groups.includes("unlocked")) {
+    const open = LEVELS.filter((_, i) => isUnlocked(i)).flatMap((l) => l.cards);
+    return [...new Set(open)].filter(inScript);
+  }
+  return CARDS.filter((c) => inScript(c) && settings.groups.includes(c.group));
+}
+
+// Validação nativa: setCustomValidity marca o campo como inválido.
+function validateGroups() {
+  let message = "";
+  if (!menu.querySelector('[name="groups"]:checked')) message = t("needGroup");
+  else if (!freePool(readSettings()).length) message = t("noneUnlocked");
+  groupBoxes[0].setCustomValidity(message);
+}
+
+menu.addEventListener("change", (event) => {
+  /*
+    "Liberados na jornada" não se soma aos grupos, ele os substitui:
+    marcar um desmarca o outro lado, como um rádio "de mentira".
+  */
+  const box = event.target;
+  if (box.name === "groups" && box.checked) {
+    for (const other of groupBoxes) {
+      if ((other.value === "unlocked") !== (box.value === "unlocked")) {
+        other.checked = false;
+      }
+    }
+  }
+  validateGroups();
   showRecords();
 });
 
@@ -283,11 +342,7 @@ function start(mode, levelIndex = null) {
     pool = level.cards;
     queue = buildQueue(level.cards, level.questions);
   } else {
-    pool = CARDS.filter(
-      (c) =>
-        (settings.script === "both" || c.script === settings.script) &&
-        settings.groups.includes(c.group),
-    );
+    pool = freePool(settings);
   }
 
   session = {
@@ -310,11 +365,17 @@ function start(mode, levelIndex = null) {
     over: false,
   };
 
-  choices.hidden = settings.answer !== "choice";
-  typing.hidden = settings.answer !== "type";
+  // No desenho não há carta nem resposta: o quadro toma o lugar delas.
+  const drawing = mode === "draw";
+  choices.hidden = drawing || settings.answer !== "choice";
+  typing.hidden = drawing || settings.answer !== "type";
+  card.hidden = drawing;
+  drawBox.hidden = !drawing;
+  game.classList.toggle("is-drawing", drawing);
   $(".hud-mode-label").textContent = {
     timed: t("time"),
     endless: t("streak"),
+    draw: t("streak"),
     journey: t("question"),
   }[mode];
   $(".timebar").hidden = mode !== "timed";
@@ -413,7 +474,9 @@ function next() {
   front.textContent = session.current.kana;
   card.classList.remove("is-flipped", "is-hit", "is-miss");
 
-  if (session.settings.answer === "choice") {
+  if (session.mode === "draw") {
+    setupDrawing(session.current);
+  } else if (session.settings.answer === "choice") {
     const options = shuffle([
       session.current.romaji,
       ...distractors(session.current),
@@ -448,23 +511,7 @@ function answer(given) {
 
   const current = session.current;
   const hit = accepts(current, given);
-  const box = session.boxes.get(current) ?? 0;
-
-  session.total++;
-  if (hit) {
-    session.hits++;
-    session.streak++;
-    session.maxStreak = Math.max(session.maxStreak, session.streak);
-    session.score += 10 * combo();
-    // Leitner: acertou, a carta sobe uma caixa (até a 5)…
-    session.boxes.set(current, Math.min(5, box + 1));
-  } else {
-    session.streak = 0;
-    session.missed.add(current.kana);
-    if (session.mode === "timed") session.endsAt -= PENALTY_MS;
-    // …errou, volta para a caixa 1 e passa a aparecer mais.
-    session.boxes.set(current, 1);
-  }
+  score(hit);
 
   // Vira a carta: o verso mostra a leitura, verde ou vermelho.
   back.textContent = current.romaji;
@@ -485,13 +532,40 @@ function answer(given) {
   setTimeout(next, hit ? 550 : 1300);
 }
 
+/*
+  Conta um acerto ou um erro: pontos, sequência e a caixa de Leitner.
+  Serve para todos os modos (a resposta escrita ou o kana desenhado).
+*/
+function score(hit) {
+  const current = session.current;
+  const box = session.boxes.get(current) ?? 0;
+
+  session.total++;
+  if (hit) {
+    session.hits++;
+    session.streak++;
+    session.maxStreak = Math.max(session.maxStreak, session.streak);
+    session.score += 10 * combo();
+    // Leitner: acertou, a carta sobe uma caixa (até a 5)…
+    session.boxes.set(current, Math.min(5, box + 1));
+  } else {
+    session.streak = 0;
+    session.missed.add(current.kana);
+    if (session.mode === "timed") session.endsAt -= PENALTY_MS;
+    // …errou, volta para a caixa 1 e passa a aparecer mais.
+    session.boxes.set(current, 1);
+  }
+}
+
 // Multiplicador: sobe 1 a cada 5 acertos seguidos, até ×5.
 const combo = () => 1 + Math.min(4, Math.floor(session.streak / 5));
 
 function updateHud() {
   $(".score").textContent = session.score;
   $(".combo").textContent = `×${combo()}`;
-  if (session.mode === "endless") $(".hud-mode").textContent = session.streak;
+  if (session.mode === "endless" || session.mode === "draw") {
+    $(".hud-mode").textContent = session.streak;
+  }
   if (session.mode === "journey") {
     $(".hud-mode").textContent = `${session.total + 1}/${session.queue.length}`;
   }
@@ -553,7 +627,7 @@ function finish(title = t("gameOver")) {
     $(".end-stars").ariaLabel = `${stars} ${t("starsOf")}`;
   } else {
     // Recordes: só sobrescreve se o novo valor for maior.
-    const key = recordKey(session.settings);
+    const key = recordKey(session.settings, session.mode);
     const best = store.best[key] ?? { timed: 0, streak: 0 };
     const newRecord =
       (session.mode === "timed" && session.score > best.timed) ||
@@ -603,8 +677,22 @@ typing.addEventListener("submit", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (game.hidden) return;
+  if (game.hidden) {
+    if (event.key === "Escape") closeStrokes();
+    return;
+  }
   if (event.key === "Escape") quit();
+  // Ctrl+Z (ou ⌘+Z no Mac) desfaz o último traço, como num editor.
+  const hard = !drawBox.hidden && session.settings.difficulty === "hard";
+  // Enter confere o kana (ou passa para o próximo, depois de conferir).
+  if (hard && event.key === "Enter") {
+    event.preventDefault();
+    $("[data-action='next-kana']").hidden ? checkHard() : next();
+  }
+  if (hard && (event.ctrlKey || event.metaKey) && event.key === "z") {
+    event.preventDefault();
+    undoStroke();
+  }
   // Teclas 1–4 escolhem a alternativa correspondente.
   const index = Number(event.key) - 1;
   if (!choices.hidden && index >= 0 && index < choices.children.length) {
@@ -621,6 +709,19 @@ document.addEventListener("click", (event) => {
   if (action === "again") start(session.mode, session.levelIndex);
   if (action === "next-level") start("journey", session.levelIndex + 1);
   if (action === "menu") show(menu);
+  if (action === "replay") animateStrokes($(".draw-ref-svg svg"));
+  if (action === "undo") undoStroke();
+  if (action === "check") checkHard();
+  if (action === "next-kana") next();
+  if (action === "clear") clearStrokes();
+  // Pular conta como erro: o kana vai para a lista "para revisar".
+  if (action === "skip" && !session.locked) {
+    session.locked = true;
+    score(false);
+    feedback.textContent = `${t("miss")} “${session.current.kana}”`;
+    updateHud();
+    setTimeout(next, 1200);
+  }
 });
 
 // ---------- Janela da jornada: o mapa de níveis ----------
@@ -686,6 +787,428 @@ function renderJourney() {
     `${t("level")} ${current + 1} · ${levelName(LEVELS[current])}`;
 }
 
+// ---------- Referência dos traços (modo desenho) ----------
+
+/*
+  Os traços vêm de strokes.js (KanjiVG): cada um é o "d" de um <path>
+  numa caixa de 109×109. SVG é vetor: a mesma referência fica nítida em
+  qualquer tamanho de tela, e o CSS consegue animar cada traço.
+*/
+const SVG_NS = "http://www.w3.org/2000/svg";
+const BOX = 109;
+
+// SVG não é HTML: precisa de createElementNS com o "namespace" do SVG.
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attrs)) {
+    node.setAttribute(name, value);
+  }
+  return node;
+}
+
+/*
+  Monta a referência de um kana (ou dois, nos combinados: き + ゃ ficam em
+  células lado a lado). Duas camadas: embaixo o kana inteiro em cinza,
+  em cima os mesmos traços que a animação "escreve" um por um.
+  pathLength="1" faz todo traço medir 1, seja curto ou longo; assim
+  stroke-dasharray/stroke-dashoffset de 1 servem para todos (veja o CSS).
+*/
+function strokeSvg(text) {
+  const chars = [...text];
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${BOX * chars.length} ${BOX}`,
+    class: "strokes",
+    role: "img",
+    "aria-label": text,
+  });
+  // Dois kana = SVG reduzido à metade: o CSS compensa nos números.
+  svg.style.setProperty("--cells", chars.length);
+  let order = 0;
+  chars.forEach((char, cell) => {
+    const ghost = svgEl("g", { class: "strokes-ghost" });
+    const ink = svgEl("g", { class: "strokes-ink" });
+    const numbers = svgEl("g", { class: "strokes-numbers" });
+    for (const g of [ghost, ink, numbers]) {
+      g.setAttribute("transform", `translate(${cell * BOX} 0)`);
+    }
+    STROKES[char].forEach(([d, x, y], i) => {
+      ghost.append(svgEl("path", { d }));
+      const path = svgEl("path", { d, pathLength: 1 });
+      // --i: posição na fila da animação (continua contando no 2º kana).
+      path.style.setProperty("--i", order++);
+      ink.append(path);
+      // x, y: onde o KanjiVG põe o número, sem encavalar com os traços.
+      const label = svgEl("text", { x, y });
+      label.textContent = i + 1;
+      numbers.append(label);
+    });
+    svg.append(ghost, ink, numbers);
+  });
+  return svg;
+}
+
+/*
+  Recomeça a animação: tirar a classe, forçar o navegador a recalcular o
+  estilo (ler um tamanho faz isso) e pôr de volta.
+*/
+function animateStrokes(svg) {
+  svg.classList.remove("is-animating");
+  svg.getBoundingClientRect();
+  svg.classList.add("is-animating");
+}
+
+// ---------- Modo desenho: captura da escrita ----------
+
+/*
+  O quadro é um <canvas>: uma imagem em que o JS pinta pixel a pixel.
+  Os traços ficam guardados como listas de pontos nas mesmas unidades
+  do KanjiVG (cada célula mede 109×109). Assim eles não dependem do
+  tamanho do quadro na tela e podem ser comparados direto com a
+  referência (etapa 3).
+*/
+const canvas = $(".draw-canvas");
+const ctx = canvas.getContext("2d");
+const ink = {
+  cells: 1, // 1 kana, ou 2 nos combinados (き + ゃ)
+  strokes: [], // traços prontos: [[x, y, espessura], …]
+  current: null, // traço sendo feito: { id do ponteiro, pontos }
+  expected: [], // traços da referência, já em pontos (draw.js)
+  accepted: [], // traços aceitos: { points, index }
+  flash: null, // traço errado, pintado de vermelho por um instante
+  misses: 0, // erros neste kana (fácil: 0 = acerto)
+  tries: [], // erros em cada traço (3 seguidos = mostra a dica)
+  colors: [], // difícil: cor de cada traço depois de conferir
+  penSeen: false, // já apareceu uma caneta? (rejeição da palma)
+};
+
+function setupDrawing(cardData) {
+  ink.cells = [...cardData.kana].length;
+  ink.strokes = [];
+  ink.current = null;
+  ink.expected = Draw.expectedStrokes(cardData.kana, STROKES);
+  ink.accepted = [];
+  ink.flash = null;
+  ink.misses = 0;
+  ink.tries = ink.expected.map(() => 0);
+  // --cells muda a proporção do quadro (aspect-ratio) no CSS.
+  drawBox.style.setProperty("--cells", ink.cells);
+  $(".draw-romaji").textContent = cardData.romaji;
+  $(".draw-ref-svg").replaceChildren(strokeSvg(cardData.kana));
+  const hard = session.settings.difficulty === "hard";
+  ink.colors = [];
+  $("[data-action='undo']").hidden = !hard;
+  $("[data-action='clear']").hidden = !hard;
+  $("[data-action='check']").hidden = !hard;
+  $("[data-action='next-kana']").hidden = true;
+  $("[data-action='skip']").hidden = false;
+  resizeCanvas();
+}
+
+/*
+  O canvas tem dois tamanhos: o do CSS (na tela) e o interno, em pixels.
+  Telas de tablet e celular têm mais pixels físicos que pixels CSS
+  (devicePixelRatio 2 ou 3): o interno é multiplicado por ele para o
+  traço sair nítido, e não borrado.
+*/
+function resizeCanvas() {
+  const { width, height } = canvas.getBoundingClientRect();
+  if (!width) return;
+  canvas.width = Math.round(width * devicePixelRatio);
+  canvas.height = Math.round(height * devicePixelRatio);
+  redraw();
+}
+
+// ResizeObserver avisa quando o quadro muda de tamanho (girar o tablet).
+new ResizeObserver(resizeCanvas).observe(canvas);
+
+function redraw() {
+  /*
+    setTransform aplica uma escala a tudo o que for pintado depois:
+    o código desenha em unidades do KanjiVG e o canvas converte.
+  */
+  const scale = canvas.width / (BOX * ink.cells);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, BOX * ink.cells, BOX);
+  drawGuides();
+  ink.strokes.forEach((points, i) => drawStroke(points, ink.colors[i]));
+  if (ink.flash) drawStroke(ink.flash, "#d0216b");
+}
+
+function drawStroke(points, color = "#000") {
+  drawDot(points[0], color);
+  for (let i = 1; i < points.length; i++) {
+    drawSegment(points[i - 1], points[i], color);
+  }
+}
+
+/*
+  Guias do papel quadriculado japonês (genkō yōshi): uma cruz
+  tracejada no meio de cada célula ajuda a acertar proporção e posição.
+*/
+function drawGuides() {
+  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = "#d8c4f0";
+  for (let cell = 0; cell < ink.cells; cell++) {
+    const left = cell * BOX;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(left + BOX / 2, 0);
+    ctx.lineTo(left + BOX / 2, BOX);
+    ctx.moveTo(left, BOX / 2);
+    ctx.lineTo(left + BOX, BOX / 2);
+    ctx.stroke();
+    if (cell) {
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(left, 0);
+      ctx.lineTo(left, BOX);
+      ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+}
+
+// Cada pedaço do traço tem a espessura média das duas pontas.
+function drawSegment([x1, y1, w1], [x2, y2, w2], color = "#000") {
+  ctx.strokeStyle = color;
+  ctx.lineCap = "round";
+  ctx.lineWidth = (w1 + w2) / 2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+// Um toque sem arrastar ainda deixa uma marca: um ponto redondo.
+function drawDot([x, y, w], color = "#000") {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, w / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/*
+  Posição do ponteiro em unidades do KanjiVG, mais a espessura. Só a
+  caneta mede a força de verdade (pressure de 0 a 1); mouse e dedo
+  ficam no meio-termo, 0.5.
+*/
+function toPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  const pressure = event.pointerType === "pen" ? event.pressure : 0.5;
+  return [
+    ((event.clientX - rect.left) / rect.width) * BOX * ink.cells,
+    ((event.clientY - rect.top) / rect.height) * BOX,
+    3 + 4 * pressure,
+  ];
+}
+
+/*
+  Pointer Events: um só conjunto de eventos para mouse, dedo e caneta
+  (event.pointerType diz qual). No CSS, touch-action: none impede que
+  o navegador use o arraste para rolar ou dar zoom na página.
+*/
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "pen") ink.penSeen = true;
+  /*
+    Rejeição da palma: quem escreve com caneta apoia a mão na tela, e
+    cada apoio vira um toque. Depois que a caneta aparece, toques de
+    dedo são ignorados.
+  */
+  if (ink.penSeen && event.pointerType === "touch") return;
+  // locked: entre um kana e outro o quadro não aceita traços.
+  if (ink.current || event.button > 0 || session.locked) return;
+  event.preventDefault();
+  // A captura mantém os eventos aqui mesmo se o traço sair do quadro.
+  canvas.setPointerCapture(event.pointerId);
+  const point = toPoint(event);
+  ink.current = { id: event.pointerId, points: [point] };
+  ink.strokes.push(ink.current.points);
+  drawDot(point);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  /*
+    O navegador entrega no máximo um pointermove por quadro de tela,
+    mas a caneta mede bem mais vezes por segundo. getCoalescedEvents()
+    devolve as medidas do meio: o traço fica liso, sem "quinas".
+  */
+  const events = event.getCoalescedEvents?.() ?? [];
+  const { points } = ink.current;
+  for (const e of events.length ? events : [event]) {
+    const point = toPoint(e);
+    drawSegment(points.at(-1), point);
+    points.push(point);
+  }
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  const { points } = ink.current;
+  ink.current = null;
+  if (session.settings.difficulty === "easy") checkEasy(points);
+});
+
+/*
+  Modo fácil: cada traço é conferido assim que a caneta sai da tela.
+  Certo, fica; errado, pisca em vermelho e some, e o aviso diz o
+  motivo. Três erros no mesmo traço: a referência mostra só ele.
+*/
+function checkEasy(points) {
+  const index = ink.accepted.length;
+  const check = Draw.checkStroke(points, ink.expected, index, ink.accepted);
+  if (check.result === "ok") {
+    ink.accepted.push({ points, index });
+    feedback.textContent = "";
+    hintStroke(null);
+    if (ink.accepted.length === ink.expected.length) drawingDone();
+    return;
+  }
+
+  ink.misses++;
+  ink.tries[index]++;
+  ink.strokes.pop();
+  ink.flash = points;
+  redraw();
+  setTimeout(() => {
+    if (ink.flash !== points) return;
+    ink.flash = null;
+    redraw();
+  }, 500);
+  feedback.textContent = t(`stroke.${check.result}`, {
+    n: index + 1,
+    other: (check.other ?? 0) + 1,
+  });
+  if (ink.tries[index] >= 3) hintStroke(index);
+}
+
+// Destaca (e repete a animação de) um traço da referência; null apaga.
+function hintStroke(index) {
+  const paths = drawBox.querySelectorAll(".strokes-ink path");
+  paths.forEach((path, i) => path.classList.toggle("is-hint", i === index));
+}
+
+/*
+  Kana completo. No fácil é acerto só se não houve nenhum erro; com
+  erros ele conta como errado e vai para a lista "para revisar".
+*/
+function drawingDone() {
+  session.locked = true;
+  const hit = ink.misses === 0;
+  score(hit);
+  feedback.textContent = hit
+    ? `${t("hit")} +${10 * combo()}`
+    : t("drawMisses", { n: ink.misses });
+  updateHud();
+  setTimeout(next, hit ? 700 : 1500);
+}
+
+// O sistema cancelou o traço (um gesto, uma notificação): ele é descartado.
+canvas.addEventListener("pointercancel", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  ink.strokes.pop();
+  ink.current = null;
+  redraw();
+});
+
+/*
+  Modo difícil: nada é conferido durante a escrita. Em "Conferir", o
+  kana inteiro é comparado de uma vez (Draw.checkAll): cada traço fica
+  verde ou vermelho e o aviso lista o que deu errado — quantidade de
+  traços, ordem, direção, forma.
+*/
+function checkHard() {
+  if (session.locked || ink.current || !ink.strokes.length) return;
+  session.locked = true;
+  const check = Draw.checkAll(ink.strokes, ink.expected);
+  ink.colors = check.results.map((r) =>
+    r.result === "ok" ? "#0a8f5a" : "#d0216b",
+  );
+  redraw();
+  score(check.ok);
+  updateHud();
+  // Conferido, não dá mais para mexer: só ver o resultado.
+  for (const action of ["check", "undo", "clear"]) {
+    $(`[data-action='${action}']`).hidden = true;
+  }
+
+  if (check.ok) {
+    feedback.textContent = `${t("hit")} +${10 * combo()}`;
+    setTimeout(next, 900);
+    return;
+  }
+  const [drawn, wanted] = check.count;
+  const problems = check.results.flatMap((r, i) =>
+    r.result === "ok"
+      ? []
+      : [t(`report.${r.result}`, { n: i + 1, other: (r.other ?? 0) + 1 })],
+  );
+  if (drawn !== wanted) {
+    problems.unshift(t("report.count", { drawn, wanted }));
+  }
+  feedback.textContent = `✘ ${problems.join(" · ")}`;
+  // Errou: espera a pessoa comparar com a referência e pedir o próximo.
+  $("[data-action='skip']").hidden = true;
+  $("[data-action='next-kana']").hidden = false;
+  $("[data-action='next-kana']").focus();
+}
+
+function undoStroke() {
+  if (ink.current || session.locked) return;
+  const points = ink.strokes.pop();
+  ink.accepted = ink.accepted.filter((a) => a.points !== points);
+  redraw();
+}
+
+function clearStrokes() {
+  if (ink.current || session.locked) return;
+  ink.strokes = [];
+  ink.accepted = [];
+  redraw();
+}
+
+// ---------- Janela auxiliar: ordem dos traços de um kana ----------
+
+/*
+  Clicar num kana das tabelas abre a ordem dos traços numa janela
+  própria (a .win-strokes do HTML), como o ⓘ do d&d.exe: a tabela não
+  muda de tamanho e a janela pode ser arrastada para o lado.
+*/
+const strokesWin = $(".win-strokes");
+let strokesOpener = null;
+
+function openStrokes(glyph, romaji, opener) {
+  const svg = strokeSvg(glyph);
+  strokesWin.querySelector(".strokes-title").textContent =
+    `${glyph} · ${romaji}`;
+  strokesWin.querySelector(".strokes-view").replaceChildren(svg);
+  const count = [...glyph].reduce((n, char) => n + STROKES[char].length, 0);
+  strokesWin.querySelector(".strokes-count").textContent = t("strokeCount", {
+    n: count,
+  });
+  strokesOpener = opener;
+  desktop.open(strokesWin);
+  animateStrokes(svg);
+  // Foco no ✕: quem usa teclado já está "dentro" da janela.
+  strokesWin.querySelector("[data-action='close']").focus();
+}
+
+// Ao fechar (✕ ou Esc), o foco volta ao kana que abriu a janela.
+function closeStrokes() {
+  if (strokesWin.hidden) return;
+  desktop.close(strokesWin);
+  strokesOpener?.isConnected && strokesOpener.focus();
+}
+
+strokesWin
+  .querySelector("[data-action='close']")
+  .addEventListener("click", () => strokesOpener?.focus());
+strokesWin
+  .querySelector(".strokes-replay")
+  .addEventListener("click", () =>
+    animateStrokes(strokesWin.querySelector("svg")),
+  );
+
 // ---------- Janelas dos alfabetos: tabelas de consulta ----------
 
 /*
@@ -706,14 +1229,19 @@ function renderTable(win) {
     for (const [kanaRow, romajiRow] of rows) {
       const romaji = romajiRow.split(" ");
       kanaRow.split(" ").forEach((kana, i) => {
-        const cell = document.createElement("p");
+        // Casa com kana é um botão (abre a ordem dos traços); vazia, um <p>.
+        const cell = document.createElement(kana === "-" ? "p" : "button");
         cell.className = "kana-cell";
         if (kana === "-") {
           cell.classList.add("is-empty");
           cell.ariaHidden = "true";
         } else {
           const glyph = script === "katakana" ? toKatakana(kana) : kana;
+          cell.type = "button";
           cell.innerHTML = `<span lang="ja">${glyph}</span> <small>${romaji[i]}</small>`;
+          cell.addEventListener("click", () =>
+            openStrokes(glyph, romaji[i], cell),
+          );
         }
         grid.append(cell);
       });
@@ -728,5 +1256,6 @@ function renderTable(win) {
 i18n.ready.then(() => {
   renderJourney();
   showRecords();
+  validateGroups();
   kanaWindows.forEach(renderTable);
 });

@@ -22,6 +22,11 @@
   flex: 0 1 500px;
 }
 
+/* No modo desenho a janela do jogo cresce: o quadro precisa de espaço. */
+.win-game:has(.screen-game.is-drawing:not([hidden])) {
+  flex-basis: 680px;
+}
+
 .win-journey {
   flex: 0 1 400px;
 }
@@ -68,7 +73,7 @@
 
 .modes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -229,6 +234,79 @@
   justify-content: center;
 }
 
+/* ---------- Modo desenho ---------- */
+
+/*
+  Grade com o quadro à esquerda e a referência à direita. --cells (1 ou
+  2, vem do JS) dá a proporção do quadro: 1:1 para um kana, 2:1 para
+  os combinados.
+*/
+.draw {
+  --cells: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-areas:
+    "prompt prompt"
+    "board ref"
+    "actions actions";
+  gap: 8px;
+  align-items: start;
+  margin: 10px 0 4px;
+}
+
+.draw[hidden] {
+  display: none;
+}
+
+.draw-prompt {
+  grid-area: prompt;
+  margin: 0;
+  font-size: 16px;
+  text-align: center;
+}
+
+.draw-romaji {
+  margin-left: 6px;
+  font-size: 28px;
+}
+
+.draw-board {
+  grid-area: board;
+  padding: 0;
+}
+
+.draw-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--cells) / 1;
+  background: #fff;
+  /* Arrastar no quadro desenha: sem rolar, sem zoom, sem selecionar. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.draw-ref {
+  grid-area: ref;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  text-align: center;
+}
+
+.draw-ref-svg {
+  padding: 0;
+}
+
+.draw-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
 /* ---------- Resultado ---------- */
 
 .end-title {
@@ -284,6 +362,63 @@
 .free .records {
   flex-basis: 100%;
   margin: 0;
+}
+
+/* ---------- Recordes ---------- */
+
+/* Caixa "afundada" (.field) com a barra roxa de título das tabelas de kana. */
+.records {
+  padding: 0;
+}
+
+.records h3 {
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: #fff;
+  background: var(--purple);
+}
+
+.records table {
+  width: 100%;
+  /* collapse: as bordas das células viram uma linha só, sem vãos. */
+  border-collapse: collapse;
+}
+
+.records th,
+.records td {
+  padding: 4px 8px;
+}
+
+.records th {
+  font-weight: normal;
+  text-align: left;
+}
+
+/* Números alinhados à direita e com algarismos de mesma largura. */
+.records td {
+  font-size: 15px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Linhas alternadas (zebra) ajudam o olho a seguir do nome ao número. */
+.records tr:nth-child(even) {
+  background: #f5eeff;
+}
+
+.records tr + tr {
+  border-top: 1px dotted #cdb8ea;
+}
+
+.records td.is-empty {
+  font-weight: normal;
+  color: #999;
+}
+
+.record-difficulty {
+  color: #555;
 }
 
 .game-level {
@@ -428,6 +563,24 @@
   box-shadow: var(--bevel-in);
 }
 
+/* As casas são botões: tiram o visual padrão de botão do navegador. */
+button.kana-cell {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+button.kana-cell:hover {
+  background: #f1e6ff;
+}
+
+button.kana-cell:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -3px;
+}
+
 .kana-cell span {
   font-size: 22px;
   line-height: 1.2;
@@ -441,4 +594,100 @@
 .kana-cell.is-empty {
   background: none;
   box-shadow: none;
+}
+
+/* ---------- Referência dos traços (modo desenho) ---------- */
+
+.strokes {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.strokes path {
+  fill: none;
+  stroke-width: 4;
+  /* Pontas e junções arredondadas, como a ponta de um pincel. */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.strokes-ghost path {
+  stroke: #ccc;
+}
+
+.strokes-ink path {
+  stroke: #000;
+}
+
+.strokes-numbers {
+  font-size: calc(5px + 3px * var(--cells, 1));
+  fill: var(--purple);
+}
+
+/*
+  A "caneta" da animação: o traço vira um tracejado com um traço de
+  comprimento 1 e um vão de 1 (pathLength="1" no SVG). Com o deslocamento
+  em 1 só o vão aparece; levar o deslocamento a 0 "escreve" o traço do
+  começo ao fim, na direção certa. O atraso por --i faz um traço por vez.
+*/
+.strokes.is-animating .strokes-ink path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: write-stroke 0.6s ease-in-out forwards;
+  animation-delay: calc(var(--i) * 0.7s);
+}
+
+/* Dica do modo fácil: só o traço da vez, rosa, escrito sem parar. */
+.strokes-ink path.is-hint {
+  stroke: var(--pink);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: write-stroke 1s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+/*
+  Quem pede menos movimento ao sistema não vê a "caneta" correndo: os
+  traços aparecem prontos e a dica fica só destacada em rosa.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .strokes.is-animating .strokes-ink path,
+  .strokes-ink path.is-hint {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes write-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- Janela auxiliar da ordem dos traços ---------- */
+
+/*
+  Fixa na tela, fora do fluxo das outras janelas: abrir e fechar não
+  mexe no layout. O translate do win98.css (arrastar) continua valendo
+  por cima desta posição.
+*/
+.win-strokes {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: min(300px, calc(100vw - 32px));
+}
+
+.strokes-view {
+  padding: 0;
+}
+
+.strokes-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0;
 }

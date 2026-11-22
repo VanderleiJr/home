@@ -8,6 +8,8 @@
     "format:check": "prettier --check .",
     "lint": "html-validate site",
     "vlibras": "node tools/vlibras/build.js",
+    "kanjivg": "node tools/kanjivg/build.js",
+    "kana:check": "node tools/kanjivg/check.js",
     "dnd:check": "node tools/dnd/check.js"
   },
   "devDependencies": {

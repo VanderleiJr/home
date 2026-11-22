@@ -6,7 +6,7 @@
     <title>kana.exe ✦ Vand Jr</title>
     <meta
       name="description"
-      content="Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo e modo infinito. HTML, CSS e JavaScript puro."
+      content="Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo, modo infinito e modo desenho, que confere a ordem dos traços. HTML, CSS e JavaScript puro."
       data-i18n-attr="content:kana.description"
     />
     <link
@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="kana.css" />
     <!-- Arrastar, minimizar e relógio: comportamento compartilhado das janelas. -->
     <script src="../../assets/desktop.js" defer></script>
+    <script src="strokes.js" defer></script>
+    <script src="draw.js" defer></script>
     <script src="kana.js" defer></script>
   </head>
   <body>
@@ -56,7 +58,8 @@
           -->
           <form class="screen screen-menu">
             <p class="intro" data-i18n="kana.intro">
-              Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê.
+              Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê
+              — ou veja a leitura e escreva o kana.
             </p>
 
             <!-- fieldset + legend: a "caixa de grupo" clássica do Windows 98. -->
@@ -103,6 +106,14 @@
 
               <fieldset>
                 <legend data-i18n="kana.groupsLabel">Grupos</legend>
+                <!-- Exclusivo: marcar este desmarca os outros (veja o kana.js). -->
+                <label
+                  ><input type="checkbox" name="groups" value="unlocked" />
+                  <span data-i18n="kana.groupUnlocked"
+                    >Liberados na jornada</span
+                  >
+                  🗺</label
+                >
                 <label
                   ><input type="checkbox" name="groups" value="base" checked />
                   <span data-i18n="kana.basic">Básicos</span>
@@ -119,6 +130,19 @@
                 >
               </fieldset>
 
+              <!-- Só vale para o modo desenho: quando a escrita é conferida. -->
+              <fieldset>
+                <legend data-i18n="kana.difficulty">Desenho</legend>
+                <label
+                  ><input type="radio" name="difficulty" value="easy" checked />
+                  <span data-i18n="kana.easy">Fácil: traço a traço</span></label
+                >
+                <label
+                  ><input type="radio" name="difficulty" value="hard" />
+                  <span data-i18n="kana.hard">Difícil: no fim</span></label
+                >
+              </fieldset>
+
               <div class="modes">
                 <button type="submit" class="btn mode" value="timed">
                   <span data-i18n="kana.timed">⏱ Contra o tempo</span>
@@ -132,13 +156,47 @@
                     >sem relógio, no seu ritmo</small
                   >
                 </button>
+                <button type="submit" class="btn mode" value="draw">
+                  <span data-i18n="kana.draw">✍ Desenho</span>
+                  <small data-i18n="kana.drawHint"
+                    >escreva com caneta ou dedo</small
+                  >
+                </button>
               </div>
 
-              <p class="field records" data-i18n-html="kana.records">
-                🏆 Recordes nesta configuração:
-                <b data-best="timed">0</b> pontos · sequência de
-                <b data-best="streak">0</b>
-              </p>
+              <!--
+                Recordes do alfabeto e dos grupos marcados. Dado em linhas e
+                colunas é uma <table> de verdade: th scope="row" diz aos
+                leitores de tela que cada nome descreve o número ao lado.
+              -->
+              <section class="field records" aria-labelledby="records-title">
+                <h3 id="records-title" data-i18n="kana.recordsTitle">
+                  🏆 Recordes nesta configuração
+                </h3>
+                <table>
+                  <tbody>
+                    <tr>
+                      <th scope="row" data-i18n="kana.recordTimed">
+                        ⏱ Contra o tempo · pontos
+                      </th>
+                      <td data-best="timed">—</td>
+                    </tr>
+                    <tr>
+                      <th scope="row" data-i18n="kana.recordStreak">
+                        ∞ Maior sequência
+                      </th>
+                      <td data-best="streak">—</td>
+                    </tr>
+                    <tr>
+                      <th scope="row">
+                        <span data-i18n="kana.recordDraw">✍ Desenho</span>
+                        <span class="record-difficulty"></span>
+                      </th>
+                      <td data-best="draw">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
             </fieldset>
           </form>
 
@@ -172,6 +230,53 @@
                 <p class="card-face card-back" aria-hidden="true">a</p>
               </div>
             </div>
+            <!--
+              Modo desenho: o romaji pedido, o quadro para escrever e, ao
+              lado, a referência — só o kana que deve ser desenhado.
+            -->
+            <div class="draw" hidden>
+              <p class="draw-prompt">
+                <span data-i18n="kana.write">Escreva</span>
+                <b class="draw-romaji"></b>
+              </p>
+              <div class="field draw-board">
+                <canvas
+                  class="draw-canvas"
+                  role="img"
+                  aria-label="Quadro de desenho"
+                  data-i18n-attr="aria-label:kana.board"
+                ></canvas>
+              </div>
+              <figure class="draw-ref">
+                <div class="field draw-ref-svg"></div>
+                <figcaption>
+                  <button type="button" class="btn" data-action="replay">
+                    <span data-i18n="kana.order">▶ Ordem</span>
+                  </button>
+                </figcaption>
+              </figure>
+              <p class="draw-actions">
+                <button type="button" class="btn" data-action="undo">
+                  <span data-i18n="kana.undo">↶ Desfazer</span>
+                </button>
+                <button type="button" class="btn" data-action="clear">
+                  <span data-i18n="kana.clear">Limpar</span>
+                </button>
+                <button type="button" class="btn" data-action="skip">
+                  <span data-i18n="kana.skip">Pular</span>
+                </button>
+                <!-- Só no difícil: conferir o kana inteiro e, se errou, seguir. -->
+                <button type="button" class="btn" data-action="check">
+                  <span data-i18n="kana.check">✔ Conferir</span>
+                  <kbd>Enter</kbd>
+                </button>
+                <button type="button" class="btn" data-action="next-kana">
+                  <span data-i18n="kana.nextKana">Próximo ▶</span>
+                  <kbd>Enter</kbd>
+                </button>
+              </p>
+            </div>
+
             <!-- role="status": leitores de tela anunciam o acerto ou o erro. -->
             <p class="feedback" role="status"></p>
 
@@ -246,6 +351,12 @@
               </button>
             </p>
           </section>
+          <!-- Crédito da fonte dos traços (veja tools/kanjivg/ no repositório). -->
+          <p class="statusbar" data-i18n-html="kana.credits">
+            Ordem dos traços do
+            <a href="https://kanjivg.tagaini.net/">KanjiVG</a>, de Ulrich Apel
+            (licença CC BY-SA 3.0).
+          </p>
         </div>
       </section>
 
@@ -301,7 +412,7 @@
         <div class="window-body">
           <p data-i18n="kana.tableHelp">
             Na ordem tradicional: cada linha é uma consoante e cada coluna uma
-            vogal.
+            vogal. Clique num kana para ver a ordem dos traços.
           </p>
           <!-- Aviso que só aparece durante a partida (veja .is-playing no CSS). -->
           <p class="table-hidden" data-i18n="kana.tableHidden">
@@ -342,13 +453,50 @@
         <div class="window-body">
           <p data-i18n="kana.tableHelp">
             Na ordem tradicional: cada linha é uma consoante e cada coluna uma
-            vogal.
+            vogal. Clique num kana para ver a ordem dos traços.
           </p>
           <!-- Aviso que só aparece durante a partida (veja .is-playing no CSS). -->
           <p class="table-hidden" data-i18n="kana.tableHidden">
             🙈 Escondido durante a partida, para não dar cola.
           </p>
           <div class="field kana-table"></div>
+        </div>
+      </section>
+
+      <!--
+        Janela auxiliar da ordem dos traços: clicar num kana das tabelas
+        abre aqui, por cima das outras (como o ⓘ do d&d.exe). É uma
+        .window comum: o desktop.js arrasta e fecha com o ✕
+        (data-action="close"); position: fixed tira ela do fluxo.
+      -->
+      <section
+        class="window win-strokes"
+        hidden
+        role="dialog"
+        aria-labelledby="strokes-title"
+      >
+        <div class="titlebar">
+          <h2 class="titlebar-text" id="strokes-title">
+            ✍ <span class="strokes-title" lang="ja"></span>
+          </h2>
+          <div class="titlebar-controls">
+            <button
+              type="button"
+              class="btn btn-close"
+              data-action="close"
+              aria-label="Fechar"
+              data-i18n-attr="aria-label:common.close"
+            ></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <div class="field strokes-view"></div>
+          <p class="strokes-info">
+            <span class="strokes-count"></span>
+            <button type="button" class="btn strokes-replay">
+              <span data-i18n="kana.order">▶ Ordem</span>
+            </button>
+          </p>
         </div>
       </section>
     </main>
