@@ -125,6 +125,15 @@
       "direction": "Direção: o traço {n} começa do outro lado.",
       "shape": "Traço {n}: forma ou lugar diferente da referência."
     },
+    "check": "✔ Conferir",
+    "nextKana": "Próximo ▶",
+    "report": {
+      "count": "{drawn} traço(s) de {wanted}",
+      "order": "{n}: ordem (é o {other})",
+      "direction": "{n}: direção",
+      "shape": "{n}: forma",
+      "extra": "{n}: sobrando"
+    },
     "credits": "Ordem dos traços do <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, de Ulrich Apel (licença CC BY-SA 3.0).",
     "scripts": {
       "hiragana": "Hiragana",

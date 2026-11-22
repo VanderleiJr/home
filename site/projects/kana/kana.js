@@ -630,11 +630,13 @@ document.addEventListener("keydown", (event) => {
   if (game.hidden) return;
   if (event.key === "Escape") quit();
   // Ctrl+Z (ou ⌘+Z no Mac) desfaz o último traço, como num editor.
-  if (
-    !drawBox.hidden &&
-    (event.ctrlKey || event.metaKey) &&
-    event.key === "z"
-  ) {
+  const hard = !drawBox.hidden && session.settings.difficulty === "hard";
+  // Enter confere o kana (ou passa para o próximo, depois de conferir).
+  if (hard && event.key === "Enter") {
+    event.preventDefault();
+    $("[data-action='next-kana']").hidden ? checkHard() : next();
+  }
+  if (hard && (event.ctrlKey || event.metaKey) && event.key === "z") {
     event.preventDefault();
     undoStroke();
   }
@@ -656,6 +658,8 @@ document.addEventListener("click", (event) => {
   if (action === "menu") show(menu);
   if (action === "replay") animateStrokes($(".draw-ref-svg svg"));
   if (action === "undo") undoStroke();
+  if (action === "check") checkHard();
+  if (action === "next-kana") next();
   if (action === "clear") clearStrokes();
   // Pular conta como erro: o kana vai para a lista "para revisar".
   if (action === "skip" && !session.locked) {
@@ -818,6 +822,7 @@ const ink = {
   flash: null, // traço errado, pintado de vermelho por um instante
   misses: 0, // erros neste kana (fácil: 0 = acerto)
   tries: [], // erros em cada traço (3 seguidos = mostra a dica)
+  colors: [], // difícil: cor de cada traço depois de conferir
   penSeen: false, // já apareceu uma caneta? (rejeição da palma)
 };
 
@@ -835,8 +840,12 @@ function setupDrawing(cardData) {
   $(".draw-romaji").textContent = cardData.romaji;
   $(".draw-ref-svg").replaceChildren(strokeSvg(cardData.kana));
   const hard = session.settings.difficulty === "hard";
+  ink.colors = [];
   $("[data-action='undo']").hidden = !hard;
   $("[data-action='clear']").hidden = !hard;
+  $("[data-action='check']").hidden = !hard;
+  $("[data-action='next-kana']").hidden = true;
+  $("[data-action='skip']").hidden = false;
   resizeCanvas();
 }
 
@@ -866,7 +875,7 @@ function redraw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, BOX * ink.cells, BOX);
   drawGuides();
-  for (const points of ink.strokes) drawStroke(points);
+  ink.strokes.forEach((points, i) => drawStroke(points, ink.colors[i]));
   if (ink.flash) drawStroke(ink.flash, "#d0216b");
 }
 
@@ -1047,15 +1056,57 @@ canvas.addEventListener("pointercancel", (event) => {
   redraw();
 });
 
+/*
+  Modo difícil: nada é conferido durante a escrita. Em "Conferir", o
+  kana inteiro é comparado de uma vez (Draw.checkAll): cada traço fica
+  verde ou vermelho e o aviso lista o que deu errado — quantidade de
+  traços, ordem, direção, forma.
+*/
+function checkHard() {
+  if (session.locked || ink.current || !ink.strokes.length) return;
+  session.locked = true;
+  const check = Draw.checkAll(ink.strokes, ink.expected);
+  ink.colors = check.results.map((r) =>
+    r.result === "ok" ? "#0a8f5a" : "#d0216b",
+  );
+  redraw();
+  score(check.ok);
+  updateHud();
+  // Conferido, não dá mais para mexer: só ver o resultado.
+  for (const action of ["check", "undo", "clear"]) {
+    $(`[data-action='${action}']`).hidden = true;
+  }
+
+  if (check.ok) {
+    feedback.textContent = `${t("hit")} +${10 * combo()}`;
+    setTimeout(next, 900);
+    return;
+  }
+  const [drawn, wanted] = check.count;
+  const problems = check.results.flatMap((r, i) =>
+    r.result === "ok"
+      ? []
+      : [t(`report.${r.result}`, { n: i + 1, other: (r.other ?? 0) + 1 })],
+  );
+  if (drawn !== wanted) {
+    problems.unshift(t("report.count", { drawn, wanted }));
+  }
+  feedback.textContent = `✘ ${problems.join(" · ")}`;
+  // Errou: espera a pessoa comparar com a referência e pedir o próximo.
+  $("[data-action='skip']").hidden = true;
+  $("[data-action='next-kana']").hidden = false;
+  $("[data-action='next-kana']").focus();
+}
+
 function undoStroke() {
-  if (ink.current) return;
+  if (ink.current || session.locked) return;
   const points = ink.strokes.pop();
   ink.accepted = ink.accepted.filter((a) => a.points !== points);
   redraw();
 }
 
 function clearStrokes() {
-  if (ink.current) return;
+  if (ink.current || session.locked) return;
   ink.strokes = [];
   ink.accepted = [];
   redraw();

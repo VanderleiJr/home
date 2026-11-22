@@ -125,6 +125,15 @@
       "direction": "Direction: stroke {n} starts at the other end.",
       "shape": "Stroke {n}: shape or position differs from the reference."
     },
+    "check": "✔ Check",
+    "nextKana": "Next ▶",
+    "report": {
+      "count": "{drawn} stroke(s) of {wanted}",
+      "order": "{n}: order (it's {other})",
+      "direction": "{n}: direction",
+      "shape": "{n}: shape",
+      "extra": "{n}: extra"
+    },
     "credits": "Stroke order from <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, by Ulrich Apel (CC BY-SA 3.0 license).",
     "scripts": {
       "hiragana": "Hiragana",
