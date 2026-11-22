@@ -442,3 +442,66 @@
   background: none;
   box-shadow: none;
 }
+
+/* ---------- Referência dos traços (modo desenho) ---------- */
+
+.strokes {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.strokes path {
+  fill: none;
+  stroke-width: 4;
+  /* Pontas e junções arredondadas, como a ponta de um pincel. */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.strokes-ghost path {
+  stroke: #ccc;
+}
+
+.strokes-ink path {
+  stroke: #000;
+}
+
+.strokes-numbers {
+  font-size: 9px;
+  fill: var(--purple);
+}
+
+/*
+  A "caneta" da animação: o traço vira um tracejado com um traço de
+  comprimento 1 e um vão de 1 (pathLength="1" no SVG). Com o deslocamento
+  em 1 só o vão aparece; levar o deslocamento a 0 "escreve" o traço do
+  começo ao fim, na direção certa. O atraso por --i faz um traço por vez.
+*/
+.strokes.is-animating .strokes-ink path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: write-stroke 0.6s ease-in-out forwards;
+  animation-delay: calc(var(--i) * 0.7s);
+}
+
+@keyframes write-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* TEMPORÁRIO (etapa 1): visualizador da ordem dos traços nas tabelas. */
+.stroke-preview {
+  max-width: 220px;
+  margin-top: 6px;
+}
+
+.stroke-preview:empty {
+  display: none;
+}
+
+.kana-cell {
+  cursor: pointer;
+}

@@ -22,6 +22,7 @@ site/                     ← única pasta publicada
 ├── i18n/                 textos de cada idioma (pt-BR.json, en.json…) e languages.json
 └── projects/<projeto>/   cada projeto: HTML + CSS + JS
 tools/vlibras/            gerador dos sinais do libras.exe (fora do site)
+tools/kanjivg/            gerador dos traços do kana.exe (fora do site)
 tools/dnd/                diagnóstico e conferência do extrator do d&d.exe (fora do site)
 ```
 
@@ -42,10 +43,13 @@ npm install
 npm run lint     # valida o HTML (html-validate)
 npm run format   # formata com Prettier
 npm run vlibras  # regera os sinais do libras.exe a partir do VLibras (precisa do comando xz)
+npm run kanjivg  # regera os traços do kana.exe a partir do KanjiVG
 ```
 
 O céu segue a hora local (sol de dia; lua, céu escuro e faróis à noite); para ver outro horário, use `?hora=21:30` na URL.
 
 Os sinais do libras.exe vêm do dicionário público do [VLibras](https://www.vlibras.gov.br/) (suíte do Governo Federal, software livre sob LGPL-3.0): `tools/vlibras/` lê os pacotes do Unity, calcula a posição dos ossos e reescreve a tabela de `signs.js`.
 
-O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`. Cada página nova nasce numa branch `feature/<slug>` e só é mesclada na `main` quando está pronta.
+Os traços do kana.exe (forma e ordem de escrita) vêm do [KanjiVG](https://kanjivg.tagaini.net/), de Ulrich Apel (CC BY-SA 3.0): `tools/kanjivg/` baixa os SVGs e reescreve `strokes.js`.
+
+O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`. Cada página nova nasce numa branch `feature/<slug>` (features novas de uma página existente: `feature/<slug>NNN`, como `feature/kana001`) e só é mesclada na `main` quando está pronta.

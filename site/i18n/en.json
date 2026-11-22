@@ -108,6 +108,7 @@
     "stars": "Stars",
     "of": "of",
     "levelsPassed": "Levels passed",
+    "credits": "Stroke order from <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, by Ulrich Apel (CC BY-SA 3.0 license).",
     "scripts": {
       "hiragana": "Hiragana",
       "katakana": "Katakana"

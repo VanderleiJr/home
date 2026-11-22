@@ -108,6 +108,7 @@
     "stars": "Estrelas",
     "of": "de",
     "levelsPassed": "Níveis concluídos",
+    "credits": "Ordem dos traços do <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, de Ulrich Apel (licença CC BY-SA 3.0).",
     "scripts": {
       "hiragana": "Hiragana",
       "katakana": "Katakana"

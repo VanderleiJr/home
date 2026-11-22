@@ -693,6 +693,75 @@ function renderJourney() {
   dakuten, 3 nos combinados). As casas vazias ("-") continuam lá, só
   que invisíveis: é isso que mantém や ゆ よ nas colunas de a, u e o.
 */
+// ---------- Referência dos traços (modo desenho) ----------
+
+/*
+  Os traços vêm de strokes.js (KanjiVG): cada um é o "d" de um <path>
+  numa caixa de 109×109. SVG é vetor: a mesma referência fica nítida em
+  qualquer tamanho de tela, e o CSS consegue animar cada traço.
+*/
+const SVG_NS = "http://www.w3.org/2000/svg";
+const BOX = 109;
+
+// SVG não é HTML: precisa de createElementNS com o "namespace" do SVG.
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attrs)) {
+    node.setAttribute(name, value);
+  }
+  return node;
+}
+
+/*
+  Monta a referência de um kana (ou dois, nos combinados: き + ゃ ficam em
+  células lado a lado). Duas camadas: embaixo o kana inteiro em cinza,
+  em cima os mesmos traços que a animação "escreve" um por um.
+  pathLength="1" faz todo traço medir 1, seja curto ou longo; assim
+  stroke-dasharray/stroke-dashoffset de 1 servem para todos (veja o CSS).
+*/
+function strokeSvg(text) {
+  const chars = [...text];
+  const svg = svgEl("svg", {
+    viewBox: `0 0 ${BOX * chars.length} ${BOX}`,
+    class: "strokes",
+    role: "img",
+    "aria-label": text,
+  });
+  let order = 0;
+  chars.forEach((char, cell) => {
+    const ghost = svgEl("g", { class: "strokes-ghost" });
+    const ink = svgEl("g", { class: "strokes-ink" });
+    const numbers = svgEl("g", { class: "strokes-numbers" });
+    for (const g of [ghost, ink, numbers]) {
+      g.setAttribute("transform", `translate(${cell * BOX} 0)`);
+    }
+    STROKES[char].forEach((d, i) => {
+      ghost.append(svgEl("path", { d }));
+      const path = svgEl("path", { d, pathLength: 1 });
+      // --i: posição na fila da animação (continua contando no 2º kana).
+      path.style.setProperty("--i", order++);
+      ink.append(path);
+      // O número fica um pouco antes do ponto onde o traço começa.
+      const [, x, y] = d.match(/^M\s*(-?[\d.]+)[,\s]*(-?[\d.]+)/);
+      const label = svgEl("text", { x: x - 6, y: y - 3 });
+      label.textContent = i + 1;
+      numbers.append(label);
+    });
+    svg.append(ghost, ink, numbers);
+  });
+  return svg;
+}
+
+/*
+  Recomeça a animação: tirar a classe, forçar o navegador a recalcular o
+  estilo (ler um tamanho faz isso) e pôr de volta.
+*/
+function animateStrokes(svg) {
+  svg.classList.remove("is-animating");
+  svg.getBoundingClientRect();
+  svg.classList.add("is-animating");
+}
+
 function renderTable(win) {
   const script = win.dataset.script;
   const sections = Object.entries(ROWS).map(([group, rows]) => {
@@ -714,6 +783,12 @@ function renderTable(win) {
         } else {
           const glyph = script === "katakana" ? toKatakana(kana) : kana;
           cell.innerHTML = `<span lang="ja">${glyph}</span> <small>${romaji[i]}</small>`;
+          // TEMPORÁRIO (etapa 1): clicar mostra a ordem dos traços.
+          cell.addEventListener("click", () => {
+            const svg = strokeSvg(glyph);
+            win.querySelector(".stroke-preview").replaceChildren(svg);
+            animateStrokes(svg);
+          });
         }
         grid.append(cell);
       });
@@ -722,6 +797,10 @@ function renderTable(win) {
     return section;
   });
   win.querySelector(".kana-table").replaceChildren(...sections);
+  // TEMPORÁRIO (etapa 1): área do visualizador abaixo da tabela.
+  const preview = document.createElement("div");
+  preview.className = "field stroke-preview";
+  win.querySelector(".kana-table").after(preview);
 }
 
 // Só monta o que tem texto depois que a tradução estiver pronta.
