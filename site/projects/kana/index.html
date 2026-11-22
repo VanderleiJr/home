@@ -120,6 +120,19 @@
                 >
               </fieldset>
 
+              <!-- Só vale para o modo desenho: quando a escrita é conferida. -->
+              <fieldset>
+                <legend data-i18n="kana.difficulty">Desenho</legend>
+                <label
+                  ><input type="radio" name="difficulty" value="easy" checked />
+                  <span data-i18n="kana.easy">Fácil: traço a traço</span></label
+                >
+                <label
+                  ><input type="radio" name="difficulty" value="hard" />
+                  <span data-i18n="kana.hard">Difícil: no fim</span></label
+                >
+              </fieldset>
+
               <div class="modes">
                 <button type="submit" class="btn mode" value="timed">
                   <span data-i18n="kana.timed">⏱ Contra o tempo</span>
@@ -131,6 +144,12 @@
                   <span data-i18n="kana.endless">∞ Infinito</span>
                   <small data-i18n="kana.endlessHint"
                     >sem relógio, no seu ritmo</small
+                  >
+                </button>
+                <button type="submit" class="btn mode" value="draw">
+                  <span data-i18n="kana.draw">✍ Desenho</span>
+                  <small data-i18n="kana.drawHint"
+                    >escreva com caneta ou dedo</small
                   >
                 </button>
               </div>
@@ -173,6 +192,44 @@
                 <p class="card-face card-back" aria-hidden="true">a</p>
               </div>
             </div>
+            <!--
+              Modo desenho: o romaji pedido, o quadro para escrever e, ao
+              lado, a referência — só o kana que deve ser desenhado.
+            -->
+            <div class="draw" hidden>
+              <p class="draw-prompt">
+                <span data-i18n="kana.write">Escreva</span>
+                <b class="draw-romaji"></b>
+              </p>
+              <div class="field draw-board">
+                <canvas
+                  class="draw-canvas"
+                  role="img"
+                  aria-label="Quadro de desenho"
+                  data-i18n-attr="aria-label:kana.board"
+                ></canvas>
+              </div>
+              <figure class="draw-ref">
+                <div class="field draw-ref-svg"></div>
+                <figcaption>
+                  <button type="button" class="btn" data-action="replay">
+                    <span data-i18n="kana.order">▶ Ordem</span>
+                  </button>
+                </figcaption>
+              </figure>
+              <p class="draw-actions">
+                <button type="button" class="btn" data-action="undo">
+                  <span data-i18n="kana.undo">↶ Desfazer</span>
+                </button>
+                <button type="button" class="btn" data-action="clear">
+                  <span data-i18n="kana.clear">Limpar</span>
+                </button>
+                <button type="button" class="btn" data-action="skip">
+                  <span data-i18n="kana.skip">Pular</span>
+                </button>
+              </p>
+            </div>
+
             <!-- role="status": leitores de tela anunciam o acerto ou o erro. -->
             <p class="feedback" role="status"></p>
 

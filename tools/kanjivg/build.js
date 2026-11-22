@@ -11,7 +11,10 @@
   Passos:
   1. baixa o SVG de cada hiragana e katakana (inclusive os pequenos, como
      ゃ e ッ) e guarda em tools/kanjivg/.cache;
-  2. tira só o atributo "d" de cada traço, na ordem do número "-sN";
+  2. tira o atributo "d" de cada traço, na ordem do número "-sN", e a
+     posição do número que o KanjiVG desenha ao lado de cada traço
+     (<text transform="matrix(1 0 0 1 X Y)">N) — escolhida à mão para
+     não encavalar com os traços;
   3. reescreve o bloco STROKES de site/projects/kana/strokes.js.
 */
 const fs = require("fs");
@@ -43,10 +46,18 @@ async function svg(code) {
 }
 
 function strokes(text) {
-  const found = [
+  const paths = [
     ...text.matchAll(/<path id="kvg:\w+-s(\d+)"[^>]*? d="([^"]+)"/g),
-  ];
-  return found.sort((a, b) => a[1] - b[1]).map((m) => m[2]);
+  ].sort((a, b) => a[1] - b[1]);
+  const numbers = new Map(
+    [...text.matchAll(/matrix\(1 0 0 1 ([\d.]+) ([\d.]+)\)">(\d+)</g)].map(
+      (m) => [m[3], [Number(m[1]), Number(m[2])]],
+    ),
+  );
+  return paths.map(([, n, d]) => {
+    if (!numbers.has(n)) throw new Error(`traço ${n} sem número`);
+    return [d, ...numbers.get(n)];
+  });
 }
 
 (async () => {
@@ -59,12 +70,22 @@ function strokes(text) {
       const list = strokes(await svg(code));
       if (!list.length) throw new Error(`${char}: nenhum traço no SVG`);
       count++;
-      // Mesmo formato que o Prettier daria: um traço por linha.
-      lines.push(
-        `    ${char}: [`,
-        ...list.map((d) => `      "${d}",`),
-        "    ],",
-      );
+      // Mesmo formato que o Prettier daria, para o arquivo já sair formatado.
+      lines.push(`    ${char}: [`);
+      for (const [d, x, y] of list) {
+        // Cabe em 80 colunas? Uma linha só; senão, um valor por linha.
+        const line = `      ["${d}", ${x}, ${y}],`;
+        if (line.length <= 80) lines.push(line);
+        else
+          lines.push(
+            "      [",
+            `        "${d}",`,
+            `        ${x},`,
+            `        ${y},`,
+            "      ],",
+          );
+      }
+      lines.push("    ],");
     }
   }
 

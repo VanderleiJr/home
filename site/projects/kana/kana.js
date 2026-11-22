@@ -201,6 +201,7 @@ const choices = $(".choices");
 const typing = $(".typing");
 const typingInput = typing.querySelector("input");
 const groupBoxes = menu.querySelectorAll('[name="groups"]');
+const drawBox = $(".draw");
 
 /*
   Durante a partida as tabelas de kana ficam borradas (sem "cola"): uma
@@ -224,16 +225,20 @@ function readSettings() {
     script: form.get("script"),
     groups: form.getAll("groups"),
     answer: form.get("answer"),
+    difficulty: form.get("difficulty"),
   };
 }
 
 // Restaura as escolhas da última visita marcando os campos do formulário.
 if (store.settings) {
-  const { script, groups, answer } = store.settings;
+  const { script, groups, answer, difficulty } = store.settings;
   for (const input of menu.querySelectorAll("input")) {
     if (input.name === "groups") input.checked = groups.includes(input.value);
     else if (input.name === "script") input.checked = input.value === script;
     else if (input.name === "answer") input.checked = input.value === answer;
+    else if (input.name === "difficulty" && difficulty) {
+      input.checked = input.value === difficulty;
+    }
   }
 }
 
@@ -310,11 +315,17 @@ function start(mode, levelIndex = null) {
     over: false,
   };
 
-  choices.hidden = settings.answer !== "choice";
-  typing.hidden = settings.answer !== "type";
+  // No desenho não há carta nem resposta: o quadro toma o lugar delas.
+  const drawing = mode === "draw";
+  choices.hidden = drawing || settings.answer !== "choice";
+  typing.hidden = drawing || settings.answer !== "type";
+  card.hidden = drawing;
+  drawBox.hidden = !drawing;
+  game.classList.toggle("is-drawing", drawing);
   $(".hud-mode-label").textContent = {
     timed: t("time"),
     endless: t("streak"),
+    draw: t("streak"),
     journey: t("question"),
   }[mode];
   $(".timebar").hidden = mode !== "timed";
@@ -413,7 +424,9 @@ function next() {
   front.textContent = session.current.kana;
   card.classList.remove("is-flipped", "is-hit", "is-miss");
 
-  if (session.settings.answer === "choice") {
+  if (session.mode === "draw") {
+    setupDrawing(session.current);
+  } else if (session.settings.answer === "choice") {
     const options = shuffle([
       session.current.romaji,
       ...distractors(session.current),
@@ -491,7 +504,9 @@ const combo = () => 1 + Math.min(4, Math.floor(session.streak / 5));
 function updateHud() {
   $(".score").textContent = session.score;
   $(".combo").textContent = `×${combo()}`;
-  if (session.mode === "endless") $(".hud-mode").textContent = session.streak;
+  if (session.mode === "endless" || session.mode === "draw") {
+    $(".hud-mode").textContent = session.streak;
+  }
   if (session.mode === "journey") {
     $(".hud-mode").textContent = `${session.total + 1}/${session.queue.length}`;
   }
@@ -605,6 +620,15 @@ typing.addEventListener("submit", (event) => {
 document.addEventListener("keydown", (event) => {
   if (game.hidden) return;
   if (event.key === "Escape") quit();
+  // Ctrl+Z (ou ⌘+Z no Mac) desfaz o último traço, como num editor.
+  if (
+    !drawBox.hidden &&
+    (event.ctrlKey || event.metaKey) &&
+    event.key === "z"
+  ) {
+    event.preventDefault();
+    undoStroke();
+  }
   // Teclas 1–4 escolhem a alternativa correspondente.
   const index = Number(event.key) - 1;
   if (!choices.hidden && index >= 0 && index < choices.children.length) {
@@ -621,6 +645,11 @@ document.addEventListener("click", (event) => {
   if (action === "again") start(session.mode, session.levelIndex);
   if (action === "next-level") start("journey", session.levelIndex + 1);
   if (action === "menu") show(menu);
+  if (action === "replay") animateStrokes($(".draw-ref-svg svg"));
+  if (action === "undo") undoStroke();
+  if (action === "clear") clearStrokes();
+  // Etapa 2: ainda sem correção, "Pular" só passa para o próximo kana.
+  if (action === "skip") next();
 });
 
 // ---------- Janela da jornada: o mapa de níveis ----------
@@ -686,13 +715,6 @@ function renderJourney() {
     `${t("level")} ${current + 1} · ${levelName(LEVELS[current])}`;
 }
 
-// ---------- Janelas dos alfabetos: tabelas de consulta ----------
-
-/*
-  Cada grupo vira uma grade com uma coluna por vogal (5 nos básicos e
-  dakuten, 3 nos combinados). As casas vazias ("-") continuam lá, só
-  que invisíveis: é isso que mantém や ゆ よ nas colunas de a, u e o.
-*/
 // ---------- Referência dos traços (modo desenho) ----------
 
 /*
@@ -735,15 +757,14 @@ function strokeSvg(text) {
     for (const g of [ghost, ink, numbers]) {
       g.setAttribute("transform", `translate(${cell * BOX} 0)`);
     }
-    STROKES[char].forEach((d, i) => {
+    STROKES[char].forEach(([d, x, y], i) => {
       ghost.append(svgEl("path", { d }));
       const path = svgEl("path", { d, pathLength: 1 });
       // --i: posição na fila da animação (continua contando no 2º kana).
       path.style.setProperty("--i", order++);
       ink.append(path);
-      // O número fica um pouco antes do ponto onde o traço começa.
-      const [, x, y] = d.match(/^M\s*(-?[\d.]+)[,\s]*(-?[\d.]+)/);
-      const label = svgEl("text", { x: x - 6, y: y - 3 });
+      // x, y: onde o KanjiVG põe o número, sem encavalar com os traços.
+      const label = svgEl("text", { x, y });
       label.textContent = i + 1;
       numbers.append(label);
     });
@@ -762,6 +783,204 @@ function animateStrokes(svg) {
   svg.classList.add("is-animating");
 }
 
+// ---------- Modo desenho: captura da escrita ----------
+
+/*
+  O quadro é um <canvas>: uma imagem em que o JS pinta pixel a pixel.
+  Os traços ficam guardados como listas de pontos nas mesmas unidades
+  do KanjiVG (cada célula mede 109×109). Assim eles não dependem do
+  tamanho do quadro na tela e podem ser comparados direto com a
+  referência (etapa 3).
+*/
+const canvas = $(".draw-canvas");
+const ctx = canvas.getContext("2d");
+const ink = {
+  cells: 1, // 1 kana, ou 2 nos combinados (き + ゃ)
+  strokes: [], // traços prontos: [[x, y, espessura], …]
+  current: null, // traço sendo feito: { id do ponteiro, pontos }
+  penSeen: false, // já apareceu uma caneta? (rejeição da palma)
+};
+
+function setupDrawing(cardData) {
+  ink.cells = [...cardData.kana].length;
+  ink.strokes = [];
+  ink.current = null;
+  // --cells muda a proporção do quadro (aspect-ratio) no CSS.
+  drawBox.style.setProperty("--cells", ink.cells);
+  $(".draw-romaji").textContent = cardData.romaji;
+  $(".draw-ref-svg").replaceChildren(strokeSvg(cardData.kana));
+  const hard = session.settings.difficulty === "hard";
+  $("[data-action='undo']").hidden = !hard;
+  $("[data-action='clear']").hidden = !hard;
+  resizeCanvas();
+}
+
+/*
+  O canvas tem dois tamanhos: o do CSS (na tela) e o interno, em pixels.
+  Telas de tablet e celular têm mais pixels físicos que pixels CSS
+  (devicePixelRatio 2 ou 3): o interno é multiplicado por ele para o
+  traço sair nítido, e não borrado.
+*/
+function resizeCanvas() {
+  const { width, height } = canvas.getBoundingClientRect();
+  if (!width) return;
+  canvas.width = Math.round(width * devicePixelRatio);
+  canvas.height = Math.round(height * devicePixelRatio);
+  redraw();
+}
+
+// ResizeObserver avisa quando o quadro muda de tamanho (girar o tablet).
+new ResizeObserver(resizeCanvas).observe(canvas);
+
+function redraw() {
+  /*
+    setTransform aplica uma escala a tudo o que for pintado depois:
+    o código desenha em unidades do KanjiVG e o canvas converte.
+  */
+  const scale = canvas.width / (BOX * ink.cells);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, BOX * ink.cells, BOX);
+  drawGuides();
+  for (const points of ink.strokes) {
+    drawDot(points[0]);
+    for (let i = 1; i < points.length; i++) {
+      drawSegment(points[i - 1], points[i]);
+    }
+  }
+}
+
+/*
+  Guias do papel quadriculado japonês (genkō yōshi): uma cruz
+  tracejada no meio de cada célula ajuda a acertar proporção e posição.
+*/
+function drawGuides() {
+  ctx.lineWidth = 0.6;
+  ctx.strokeStyle = "#d8c4f0";
+  for (let cell = 0; cell < ink.cells; cell++) {
+    const left = cell * BOX;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(left + BOX / 2, 0);
+    ctx.lineTo(left + BOX / 2, BOX);
+    ctx.moveTo(left, BOX / 2);
+    ctx.lineTo(left + BOX, BOX / 2);
+    ctx.stroke();
+    if (cell) {
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(left, 0);
+      ctx.lineTo(left, BOX);
+      ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+}
+
+// Cada pedaço do traço tem a espessura média das duas pontas.
+function drawSegment([x1, y1, w1], [x2, y2, w2]) {
+  ctx.strokeStyle = "#000";
+  ctx.lineCap = "round";
+  ctx.lineWidth = (w1 + w2) / 2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+// Um toque sem arrastar ainda deixa uma marca: um ponto redondo.
+function drawDot([x, y, w]) {
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.arc(x, y, w / 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/*
+  Posição do ponteiro em unidades do KanjiVG, mais a espessura. Só a
+  caneta mede a força de verdade (pressure de 0 a 1); mouse e dedo
+  ficam no meio-termo, 0.5.
+*/
+function toPoint(event) {
+  const rect = canvas.getBoundingClientRect();
+  const pressure = event.pointerType === "pen" ? event.pressure : 0.5;
+  return [
+    ((event.clientX - rect.left) / rect.width) * BOX * ink.cells,
+    ((event.clientY - rect.top) / rect.height) * BOX,
+    3 + 4 * pressure,
+  ];
+}
+
+/*
+  Pointer Events: um só conjunto de eventos para mouse, dedo e caneta
+  (event.pointerType diz qual). No CSS, touch-action: none impede que
+  o navegador use o arraste para rolar ou dar zoom na página.
+*/
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "pen") ink.penSeen = true;
+  /*
+    Rejeição da palma: quem escreve com caneta apoia a mão na tela, e
+    cada apoio vira um toque. Depois que a caneta aparece, toques de
+    dedo são ignorados.
+  */
+  if (ink.penSeen && event.pointerType === "touch") return;
+  if (ink.current || event.button > 0) return;
+  event.preventDefault();
+  // A captura mantém os eventos aqui mesmo se o traço sair do quadro.
+  canvas.setPointerCapture(event.pointerId);
+  const point = toPoint(event);
+  ink.current = { id: event.pointerId, points: [point] };
+  ink.strokes.push(ink.current.points);
+  drawDot(point);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  /*
+    O navegador entrega no máximo um pointermove por quadro de tela,
+    mas a caneta mede bem mais vezes por segundo. getCoalescedEvents()
+    devolve as medidas do meio: o traço fica liso, sem "quinas".
+  */
+  const events = event.getCoalescedEvents?.() ?? [];
+  const { points } = ink.current;
+  for (const e of events.length ? events : [event]) {
+    const point = toPoint(e);
+    drawSegment(points.at(-1), point);
+    points.push(point);
+  }
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  ink.current = null;
+});
+
+// O sistema cancelou o traço (um gesto, uma notificação): ele é descartado.
+canvas.addEventListener("pointercancel", (event) => {
+  if (ink.current?.id !== event.pointerId) return;
+  ink.strokes.pop();
+  ink.current = null;
+  redraw();
+});
+
+function undoStroke() {
+  if (ink.current) return;
+  ink.strokes.pop();
+  redraw();
+}
+
+function clearStrokes() {
+  if (ink.current) return;
+  ink.strokes = [];
+  redraw();
+}
+
+// ---------- Janelas dos alfabetos: tabelas de consulta ----------
+
+/*
+  Cada grupo vira uma grade com uma coluna por vogal (5 nos básicos e
+  dakuten, 3 nos combinados). As casas vazias ("-") continuam lá, só
+  que invisíveis: é isso que mantém や ゆ よ nas colunas de a, u e o.
+*/
 function renderTable(win) {
   const script = win.dataset.script;
   const sections = Object.entries(ROWS).map(([group, rows]) => {
@@ -783,12 +1002,6 @@ function renderTable(win) {
         } else {
           const glyph = script === "katakana" ? toKatakana(kana) : kana;
           cell.innerHTML = `<span lang="ja">${glyph}</span> <small>${romaji[i]}</small>`;
-          // TEMPORÁRIO (etapa 1): clicar mostra a ordem dos traços.
-          cell.addEventListener("click", () => {
-            const svg = strokeSvg(glyph);
-            win.querySelector(".stroke-preview").replaceChildren(svg);
-            animateStrokes(svg);
-          });
         }
         grid.append(cell);
       });
@@ -797,10 +1010,6 @@ function renderTable(win) {
     return section;
   });
   win.querySelector(".kana-table").replaceChildren(...sections);
-  // TEMPORÁRIO (etapa 1): área do visualizador abaixo da tabela.
-  const preview = document.createElement("div");
-  preview.className = "field stroke-preview";
-  win.querySelector(".kana-table").after(preview);
 }
 
 // Só monta o que tem texto depois que a tradução estiver pronta.
