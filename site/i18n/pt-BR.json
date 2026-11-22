@@ -119,6 +119,12 @@
     "undo": "↶ Desfazer",
     "clear": "Limpar",
     "skip": "Pular",
+    "drawMisses": "Completo, com {n} erro(s) — vai para revisão.",
+    "stroke": {
+      "order": "Ordem: esse é o traço {other}. Agora é o {n}.",
+      "direction": "Direção: o traço {n} começa do outro lado.",
+      "shape": "Traço {n}: forma ou lugar diferente da referência."
+    },
     "credits": "Ordem dos traços do <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, de Ulrich Apel (licença CC BY-SA 3.0).",
     "scripts": {
       "hiragana": "Hiragana",

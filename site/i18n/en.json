@@ -119,6 +119,12 @@
     "undo": "↶ Undo",
     "clear": "Clear",
     "skip": "Skip",
+    "drawMisses": "Done, with {n} mistake(s) — added to review.",
+    "stroke": {
+      "order": "Order: that is stroke {other}. Now it's stroke {n}.",
+      "direction": "Direction: stroke {n} starts at the other end.",
+      "shape": "Stroke {n}: shape or position differs from the reference."
+    },
     "credits": "Stroke order from <a href=\"https://kanjivg.tagaini.net/\">KanjiVG</a>, by Ulrich Apel (CC BY-SA 3.0 license).",
     "scripts": {
       "hiragana": "Hiragana",

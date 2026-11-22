@@ -563,6 +563,15 @@
   animation-delay: calc(var(--i) * 0.7s);
 }
 
+/* Dica do modo fácil: só o traço da vez, rosa, escrito sem parar. */
+.strokes-ink path.is-hint {
+  stroke: var(--pink);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: write-stroke 1s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
 @keyframes write-stroke {
   to {
     stroke-dashoffset: 0;

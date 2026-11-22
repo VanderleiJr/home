@@ -461,23 +461,7 @@ function answer(given) {
 
   const current = session.current;
   const hit = accepts(current, given);
-  const box = session.boxes.get(current) ?? 0;
-
-  session.total++;
-  if (hit) {
-    session.hits++;
-    session.streak++;
-    session.maxStreak = Math.max(session.maxStreak, session.streak);
-    session.score += 10 * combo();
-    // Leitner: acertou, a carta sobe uma caixa (até a 5)…
-    session.boxes.set(current, Math.min(5, box + 1));
-  } else {
-    session.streak = 0;
-    session.missed.add(current.kana);
-    if (session.mode === "timed") session.endsAt -= PENALTY_MS;
-    // …errou, volta para a caixa 1 e passa a aparecer mais.
-    session.boxes.set(current, 1);
-  }
+  score(hit);
 
   // Vira a carta: o verso mostra a leitura, verde ou vermelho.
   back.textContent = current.romaji;
@@ -496,6 +480,31 @@ function answer(given) {
   $(".combo").textContent = `×${combo()}`;
   // Errou? A carta fica virada por mais tempo, para dar tempo de memorizar.
   setTimeout(next, hit ? 550 : 1300);
+}
+
+/*
+  Conta um acerto ou um erro: pontos, sequência e a caixa de Leitner.
+  Serve para todos os modos (a resposta escrita ou o kana desenhado).
+*/
+function score(hit) {
+  const current = session.current;
+  const box = session.boxes.get(current) ?? 0;
+
+  session.total++;
+  if (hit) {
+    session.hits++;
+    session.streak++;
+    session.maxStreak = Math.max(session.maxStreak, session.streak);
+    session.score += 10 * combo();
+    // Leitner: acertou, a carta sobe uma caixa (até a 5)…
+    session.boxes.set(current, Math.min(5, box + 1));
+  } else {
+    session.streak = 0;
+    session.missed.add(current.kana);
+    if (session.mode === "timed") session.endsAt -= PENALTY_MS;
+    // …errou, volta para a caixa 1 e passa a aparecer mais.
+    session.boxes.set(current, 1);
+  }
 }
 
 // Multiplicador: sobe 1 a cada 5 acertos seguidos, até ×5.
@@ -648,8 +657,14 @@ document.addEventListener("click", (event) => {
   if (action === "replay") animateStrokes($(".draw-ref-svg svg"));
   if (action === "undo") undoStroke();
   if (action === "clear") clearStrokes();
-  // Etapa 2: ainda sem correção, "Pular" só passa para o próximo kana.
-  if (action === "skip") next();
+  // Pular conta como erro: o kana vai para a lista "para revisar".
+  if (action === "skip" && !session.locked) {
+    session.locked = true;
+    score(false);
+    feedback.textContent = `${t("miss")} “${session.current.kana}”`;
+    updateHud();
+    setTimeout(next, 1200);
+  }
 });
 
 // ---------- Janela da jornada: o mapa de níveis ----------
@@ -800,6 +815,9 @@ const ink = {
   current: null, // traço sendo feito: { id do ponteiro, pontos }
   expected: [], // traços da referência, já em pontos (draw.js)
   accepted: [], // traços aceitos: { points, index }
+  flash: null, // traço errado, pintado de vermelho por um instante
+  misses: 0, // erros neste kana (fácil: 0 = acerto)
+  tries: [], // erros em cada traço (3 seguidos = mostra a dica)
   penSeen: false, // já apareceu uma caneta? (rejeição da palma)
 };
 
@@ -809,6 +827,9 @@ function setupDrawing(cardData) {
   ink.current = null;
   ink.expected = Draw.expectedStrokes(cardData.kana, STROKES);
   ink.accepted = [];
+  ink.flash = null;
+  ink.misses = 0;
+  ink.tries = ink.expected.map(() => 0);
   // --cells muda a proporção do quadro (aspect-ratio) no CSS.
   drawBox.style.setProperty("--cells", ink.cells);
   $(".draw-romaji").textContent = cardData.romaji;
@@ -845,11 +866,14 @@ function redraw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, BOX * ink.cells, BOX);
   drawGuides();
-  for (const points of ink.strokes) {
-    drawDot(points[0]);
-    for (let i = 1; i < points.length; i++) {
-      drawSegment(points[i - 1], points[i]);
-    }
+  for (const points of ink.strokes) drawStroke(points);
+  if (ink.flash) drawStroke(ink.flash, "#d0216b");
+}
+
+function drawStroke(points, color = "#000") {
+  drawDot(points[0], color);
+  for (let i = 1; i < points.length; i++) {
+    drawSegment(points[i - 1], points[i], color);
   }
 }
 
@@ -881,8 +905,8 @@ function drawGuides() {
 }
 
 // Cada pedaço do traço tem a espessura média das duas pontas.
-function drawSegment([x1, y1, w1], [x2, y2, w2]) {
-  ctx.strokeStyle = "#000";
+function drawSegment([x1, y1, w1], [x2, y2, w2], color = "#000") {
+  ctx.strokeStyle = color;
   ctx.lineCap = "round";
   ctx.lineWidth = (w1 + w2) / 2;
   ctx.beginPath();
@@ -892,8 +916,8 @@ function drawSegment([x1, y1, w1], [x2, y2, w2]) {
 }
 
 // Um toque sem arrastar ainda deixa uma marca: um ponto redondo.
-function drawDot([x, y, w]) {
-  ctx.fillStyle = "#000";
+function drawDot([x, y, w], color = "#000") {
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(x, y, w / 2, 0, Math.PI * 2);
   ctx.fill();
@@ -927,7 +951,8 @@ canvas.addEventListener("pointerdown", (event) => {
     dedo são ignorados.
   */
   if (ink.penSeen && event.pointerType === "touch") return;
-  if (ink.current || event.button > 0) return;
+  // locked: entre um kana e outro o quadro não aceita traços.
+  if (ink.current || event.button > 0 || session.locked) return;
   event.preventDefault();
   // A captura mantém os eventos aqui mesmo se o traço sair do quadro.
   canvas.setPointerCapture(event.pointerId);
@@ -957,36 +982,61 @@ canvas.addEventListener("pointerup", (event) => {
   if (ink.current?.id !== event.pointerId) return;
   const { points } = ink.current;
   ink.current = null;
-  debugStroke(points);
+  if (session.settings.difficulty === "easy") checkEasy(points);
 });
 
 /*
-  TEMPORÁRIO (etapa 3): mostra o veredito de cada traço e a distância
-  média até o esperado, para calibrar os limites do draw.js com
-  desenhos reais.
+  Modo fácil: cada traço é conferido assim que a caneta sai da tela.
+  Certo, fica; errado, pisca em vermelho e some, e o aviso diz o
+  motivo. Três erros no mesmo traço: a referência mostra só ele.
 */
-function debugStroke(points) {
-  const index = ink.strokes.length - 1;
-  if (index >= ink.expected.length) {
-    feedback.textContent = `traço ${index + 1}: sobrando`;
-    return;
-  }
+function checkEasy(points) {
+  const index = ink.accepted.length;
   const check = Draw.checkStroke(points, ink.expected, index, ink.accepted);
   if (check.result === "ok") {
     ink.accepted.push({ points, index });
-  } else {
-    // Traço errado sai do quadro: o próximo continua no mesmo número.
-    ink.strokes.pop();
-    setTimeout(redraw, 400);
+    feedback.textContent = "";
+    hintStroke(null);
+    if (ink.accepted.length === ink.expected.length) drawingDone();
+    return;
   }
-  const other =
-    check.other === undefined ? "" : ` (parece o ${check.other + 1})`;
-  let text = `traço ${index + 1}: ${check.result}${other} · ${check.dist.toFixed(1)}`;
-  if (ink.strokes.length === ink.expected.length) {
-    const all = Draw.checkAll(ink.strokes, ink.expected);
-    text += ` — kana inteiro: ${all.ok ? "certo" : "errado"}`;
-  }
-  feedback.textContent = text;
+
+  ink.misses++;
+  ink.tries[index]++;
+  ink.strokes.pop();
+  ink.flash = points;
+  redraw();
+  setTimeout(() => {
+    if (ink.flash !== points) return;
+    ink.flash = null;
+    redraw();
+  }, 500);
+  feedback.textContent = t(`stroke.${check.result}`, {
+    n: index + 1,
+    other: (check.other ?? 0) + 1,
+  });
+  if (ink.tries[index] >= 3) hintStroke(index);
+}
+
+// Destaca (e repete a animação de) um traço da referência; null apaga.
+function hintStroke(index) {
+  const paths = drawBox.querySelectorAll(".strokes-ink path");
+  paths.forEach((path, i) => path.classList.toggle("is-hint", i === index));
+}
+
+/*
+  Kana completo. No fácil é acerto só se não houve nenhum erro; com
+  erros ele conta como errado e vai para a lista "para revisar".
+*/
+function drawingDone() {
+  session.locked = true;
+  const hit = ink.misses === 0;
+  score(hit);
+  feedback.textContent = hit
+    ? `${t("hit")} +${10 * combo()}`
+    : t("drawMisses", { n: ink.misses });
+  updateHud();
+  setTimeout(next, hit ? 700 : 1500);
 }
 
 // O sistema cancelou o traço (um gesto, uma notificação): ele é descartado.
