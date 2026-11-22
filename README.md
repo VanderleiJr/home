@@ -10,7 +10,7 @@ O código é aberto e foi escrito para ser lido: cada projeto traz comentários 
 
 ## Projetos
 
-- [🎴 kana.exe](https://vanderleijr.github.io/home/projects/kana/): flashcards de hiragana e katakana: jornada por níveis com estrelas (salva no `localStorage`), desafio contra o tempo e modo infinito ([código](site/projects/kana/)).
+- [🎴 kana.exe](https://vanderleijr.github.io/home/projects/kana/): flashcards de hiragana e katakana: jornada por níveis com estrelas (salva no `localStorage`), desafio contra o tempo, modo infinito e modo desenho para tablet/caneta, que confere forma, direção e ordem dos traços ([código](site/projects/kana/)).
 - [🤟 libras.exe](https://vanderleijr.github.io/home/projects/libras/): flashcards do alfabeto manual e dos números da Libras, feitos por um personagem 3D (WebGL puro, feminino ou masculino) com mão articulada; sinais e movimentos medidos das animações do [VLibras](https://www.vlibras.gov.br/): jornada por níveis, contra o tempo e infinito ([código](site/projects/libras/)).
 
 ## Estrutura
@@ -44,12 +44,13 @@ npm run lint     # valida o HTML (html-validate)
 npm run format   # formata com Prettier
 npm run vlibras  # regera os sinais do libras.exe a partir do VLibras (precisa do comando xz)
 npm run kanjivg  # regera os traços do kana.exe a partir do KanjiVG
+npm run kana:check  # testa o reconhecedor de escrita do kana.exe
 ```
 
 O céu segue a hora local (sol de dia; lua, céu escuro e faróis à noite); para ver outro horário, use `?hora=21:30` na URL.
 
 Os sinais do libras.exe vêm do dicionário público do [VLibras](https://www.vlibras.gov.br/) (suíte do Governo Federal, software livre sob LGPL-3.0): `tools/vlibras/` lê os pacotes do Unity, calcula a posição dos ossos e reescreve a tabela de `signs.js`.
 
-Os traços do kana.exe (forma e ordem de escrita) vêm do [KanjiVG](https://kanjivg.tagaini.net/), de Ulrich Apel (CC BY-SA 3.0): `tools/kanjivg/` baixa os SVGs e reescreve `strokes.js`.
+Os traços do kana.exe (forma e ordem de escrita) vêm do [KanjiVG](https://kanjivg.tagaini.net/), de Ulrich Apel (CC BY-SA 3.0): `tools/kanjivg/` baixa os SVGs e reescreve `strokes.js`; `draw.js` compara cada traço desenhado com o esperado (posição, forma, direção e ordem, calibrando pelo jeito da mão).
 
 O deploy no GitHub Pages roda via GitHub Actions a cada push na `main`. Cada página nova nasce numa branch `feature/<slug>` (features novas de uma página existente: `feature/<slug>NNN`, como `feature/kana001`) e só é mesclada na `main` quando está pronta.

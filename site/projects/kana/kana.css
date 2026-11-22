@@ -573,6 +573,18 @@
   animation-delay: 0s;
 }
 
+/*
+  Quem pede menos movimento ao sistema não vê a "caneta" correndo: os
+  traços aparecem prontos e a dica fica só destacada em rosa.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .strokes.is-animating .strokes-ink path,
+  .strokes-ink path.is-hint {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes write-stroke {
   to {
     stroke-dashoffset: 0;

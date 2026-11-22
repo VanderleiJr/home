@@ -243,12 +243,18 @@ if (store.settings) {
 }
 
 // Cada combinação de configurações tem seus próprios recordes.
-const recordKey = (s) => `${s.script}|${[...s.groups].sort()}|${s.answer}`;
+// O desenho não usa o tipo de resposta: guarda por dificuldade.
+const recordKey = (s, mode) =>
+  `${s.script}|${[...s.groups].sort()}|${
+    mode === "draw" ? `draw:${s.difficulty}` : s.answer
+  }`;
 
 function showRecords() {
   const best = store.best[recordKey(readSettings())] ?? {};
   $("[data-best='timed']").textContent = best.timed ?? 0;
   $("[data-best='streak']").textContent = best.streak ?? 0;
+  const drawn = store.best[recordKey(readSettings(), "draw")] ?? {};
+  $("[data-best='draw']").textContent = drawn.streak ?? 0;
 }
 
 menu.addEventListener("change", () => {
@@ -577,7 +583,7 @@ function finish(title = t("gameOver")) {
     $(".end-stars").ariaLabel = `${stars} ${t("starsOf")}`;
   } else {
     // Recordes: só sobrescreve se o novo valor for maior.
-    const key = recordKey(session.settings);
+    const key = recordKey(session.settings, session.mode);
     const best = store.best[key] ?? { timed: 0, streak: 0 };
     const newRecord =
       (session.mode === "timed" && session.score > best.timed) ||

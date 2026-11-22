@@ -49,10 +49,10 @@
     }
   },
   "kana": {
-    "description": "Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo e modo infinito. HTML, CSS e JavaScript puro.",
+    "description": "Jogo de flashcards para aprender hiragana e katakana: jornada por níveis com estrelas, desafio contra o tempo, modo infinito e modo desenho, que confere a ordem dos traços. HTML, CSS e JavaScript puro.",
     "close": "Fechar e voltar à página inicial",
     "back": "Voltar à página inicial",
-    "intro": "Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê.",
+    "intro": "Aprenda os alfabetos japoneses: veja o kana e diga como ele se lê — ou veja a leitura e escreva o kana.",
     "answer": "Resposta",
     "choice": "Múltipla escolha",
     "type": "Digitar",
@@ -67,7 +67,7 @@
     "timedHint": "60 s · errar custa 3 s",
     "endless": "∞ Infinito",
     "endlessHint": "sem relógio, no seu ritmo",
-    "records": "🏆 Recordes nesta configuração: <b data-best=\"timed\">0</b> pontos · sequência de <b data-best=\"streak\">0</b>",
+    "records": "🏆 Recordes nesta configuração: <b data-best=\"timed\">0</b> pontos · sequência de <b data-best=\"streak\">0</b> · ✍ desenho nesta dificuldade: sequência de <b data-best=\"draw\">0</b>",
     "game": "Jogo",
     "score": "Pontos",
     "how": "Como se lê?",

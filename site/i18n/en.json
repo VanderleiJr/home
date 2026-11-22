@@ -49,10 +49,10 @@
     }
   },
   "kana": {
-    "description": "Flashcard game to learn hiragana and katakana: a level journey with stars, a timed challenge and an endless mode. Plain HTML, CSS and JavaScript.",
+    "description": "Flashcard game to learn hiragana and katakana: a level journey with stars, a timed challenge, an endless mode and a drawing mode that checks stroke order. Plain HTML, CSS and JavaScript.",
     "close": "Close and go back to the home page",
     "back": "Back to the home page",
-    "intro": "Learn the Japanese alphabets: see the kana and say how it reads.",
+    "intro": "Learn the Japanese alphabets: see the kana and say how it reads — or see the reading and write the kana.",
     "answer": "Answer",
     "choice": "Multiple choice",
     "type": "Type it",
@@ -67,7 +67,7 @@
     "timedHint": "60 s · a miss costs 3 s",
     "endless": "∞ Endless",
     "endlessHint": "no clock, at your pace",
-    "records": "🏆 Records for these settings: <b data-best=\"timed\">0</b> points · streak of <b data-best=\"streak\">0</b>",
+    "records": "🏆 Records for these settings: <b data-best=\"timed\">0</b> points · streak of <b data-best=\"streak\">0</b> · ✍ drawing at this difficulty: streak of <b data-best=\"draw\">0</b>",
     "game": "Game",
     "score": "Score",
     "how": "How does it read?",
